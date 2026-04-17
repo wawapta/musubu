@@ -700,22 +700,25 @@
     <div class="setup-card">
       <div class="setup-icon">👋</div>
       <div class="setup-title">プロフィール設定</div>
-      <div class="setup-desc">ニックネームとお子さんの学年を<br>教えてください</div>
+      <div class="setup-desc">ニックネーム・学校・学年を<br>教えてください</div>
       <div class="field">
         <label>ニックネーム</label>
         <input type="text" id="setup-nickname" placeholder="例：さくらママ">
       </div>
       <div class="field">
-        <label>お子さんの学年</label>
-        <select id="setup-grade">
-          <option value="">選択してください</option>
-          <option value="1年生">1年生</option>
-          <option value="2年生">2年生</option>
-          <option value="3年生">3年生</option>
-          <option value="4年生">4年生</option>
-          <option value="5年生">5年生</option>
-          <option value="6年生">6年生</option>
-        </select>
+        <label>所属学校</label>
+        <input type="text" id="setup-school" placeholder="例：南町小学校">
+      </div>
+      <div class="field">
+        <label>お子さんの学年（複数選択可）</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer"><input type="checkbox" class="grade-check" value="1年生"> 1年生</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer"><input type="checkbox" class="grade-check" value="2年生"> 2年生</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer"><input type="checkbox" class="grade-check" value="3年生"> 3年生</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer"><input type="checkbox" class="grade-check" value="4年生"> 4年生</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer"><input type="checkbox" class="grade-check" value="5年生"> 5年生</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer"><input type="checkbox" class="grade-check" value="6年生"> 6年生</label>
+        </div>
       </div>
       <button class="btn btn-primary" onclick="saveProfile()">はじめる</button>
       <div id="setup-error" class="error-msg"></div>
@@ -972,11 +975,15 @@ async function doSignup() {
 // ===== PROFILE SETUP =====
 async function saveProfile() {
   const nickname = document.getElementById('setup-nickname').value.trim();
-  const grade = document.getElementById('setup-grade').value;
+  const school = document.getElementById('setup-school').value.trim();
+  const grades = Array.from(document.querySelectorAll('.grade-check:checked')).map(el => el.value);
   const err = document.getElementById('setup-error');
   err.classList.remove('show');
-  if (!nickname || !grade) { err.textContent = 'ニックネームと学年を入力してください'; err.classList.add('show'); return; }
-  const { error } = await sb.from('profiles').insert({ id: currentUser.id, nickname, grade });
+  if (!nickname) { err.textContent = 'ニックネームを入力してください'; err.classList.add('show'); return; }
+  if (!school) { err.textContent = '所属学校を入力してください'; err.classList.add('show'); return; }
+  if (grades.length === 0) { err.textContent = '学年を1つ以上選択してください'; err.classList.add('show'); return; }
+  const grade = grades[0]; // 後方互換用（既存カラム）
+  const { error } = await sb.from('profiles').insert({ id: currentUser.id, nickname, grade, school, grades });
   if (error) { err.textContent = 'エラーが発生しました: ' + error.message; err.classList.add('show'); return; }
   await loadProfile();
   showScreen('main');
@@ -990,7 +997,10 @@ function initMain() {
   document.getElementById('header-name').textContent = currentProfile.nickname;
   document.getElementById('mypage-avatar').textContent = initial;
   document.getElementById('mypage-name').textContent = currentProfile.nickname;
-  document.getElementById('mypage-grade').textContent = currentProfile.grade;
+  document.getElementById('mypage-grade').textContent =
+    (currentProfile.grades && currentProfile.grades.length > 0)
+      ? currentProfile.grades.join('・')
+      : currentProfile.grade || '';
   if (currentProfile.is_pta_admin) {
     document.getElementById('pta-create-btn').style.display = '';
     document.getElementById('mypage-admin').style.display = '';
@@ -1013,24 +1023,46 @@ async function loadActivities() {
   const { data: myCheckins } = await sb.from('checkins').select('activity_id').eq('user_id', currentUser.id);
   const checkedIds = new Set((myCheckins || []).map(c => c.activity_id));
   const container = document.getElementById('activities-list');
+  const now = new Date();
 
-  if (!activities || activities.length === 0) {
+  // 3段階フィルタリング
+  const visible = (activities || []).filter(a => {
+    const actDate = new Date(a.activity_date);
+    const dayEnd = new Date(actDate);
+    dayEnd.setHours(23, 59, 59, 999);
+    const limit48h = new Date(dayEnd.getTime() + 48 * 60 * 60 * 1000);
+    return now <= limit48h; // 48h経過後は非表示
+  });
+
+  if (visible.length === 0) {
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">🌱</div><div class="empty-text">まだ活動はありません</div></div>`;
     return;
   }
 
-  container.innerHTML = activities.map(a => {
+  container.innerHTML = visible.map(a => {
     const isChecked = checkedIds.has(a.id);
-    const dateStr = new Date(a.activity_date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+    const actDate = new Date(a.activity_date);
+    const dayEnd = new Date(actDate); dayEnd.setHours(23, 59, 59, 999);
+    const isToday = now <= dayEnd;
+    const isWithin48h = !isToday && now <= new Date(dayEnd.getTime() + 48 * 60 * 60 * 1000);
+    const dateStr = actDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    let statusBadge = '';
+    if (isToday) {
+      statusBadge = '<span style="font-size:0.72rem;background:#EEF5F0;color:#4A6B4E;padding:0.15rem 0.6rem;border-radius:20px;font-weight:500">開催中</span>';
+    } else if (isWithin48h) {
+      statusBadge = '<span style="font-size:0.72rem;background:#FBF5EA;color:#8A6020;padding:0.15rem 0.6rem;border-radius:20px;font-weight:500">カード送信のみ可</span>';
+    }
+
     return `
-      <div class="activity-card" onclick="openActivity('${a.id}', '${escHtml(a.title)}', '${dateStr}', ${isChecked})">
+      <div class="activity-card" onclick="openActivity('${a.id}', '${escHtml(a.title)}', '${dateStr}', ${isChecked}, ${isToday}, ${isWithin48h})">
         <div class="activity-card-title">${escHtml(a.title)}</div>
         <div class="activity-card-date">
           <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
           ${dateStr}
         </div>
         <div class="activity-card-footer">
-          <span></span>
+          ${statusBadge}
           ${isChecked ? '<span class="checked-badge">✓ 参加済み</span>' : '<span style="font-size:0.82rem;color:var(--text-light)">タップで詳細</span>'}
         </div>
       </div>
@@ -1038,7 +1070,7 @@ async function loadActivities() {
   }).join('');
 }
 
-async function openActivity(id, title, dateStr, isChecked) {
+async function openActivity(id, title, dateStr, isChecked, isToday, isWithin48h) {
   selectedActivityId = id;
   const { data: checkins } = await sb.from('checkins').select('user_id, profiles(id, nickname, grade)').eq('activity_id', id);
   const participants = (checkins || []).map(c => c.profiles).filter(Boolean);
@@ -1049,10 +1081,16 @@ async function openActivity(id, title, dateStr, isChecked) {
     <div class="modal-sub">${dateStr}</div>
   `;
 
-  if (!isChecked) {
+  if (isWithin48h && !isToday) {
+    html += `<div style="background:#FBF5EA;border-radius:10px;padding:0.7rem 1rem;margin-bottom:1.2rem;font-size:0.85rem;color:#8A6020">終了済み・カード送信のみ可（48時間以内）</div>`;
+  }
+
+  if (isToday && !isChecked) {
     html += `<button class="btn btn-primary" style="margin-bottom:1.2rem" onclick="doCheckin('${id}')">この活動に参加記録する</button>`;
-  } else {
+  } else if (isChecked) {
     html += `<div style="background:var(--sage-light);border-radius:10px;padding:0.7rem 1rem;margin-bottom:1.2rem;font-size:0.88rem;color:var(--sage-dark)">✓ 参加記録済みです</div>`;
+  } else if (!isToday && !isChecked) {
+    html += `<div style="background:var(--cream);border-radius:10px;padding:0.7rem 1rem;margin-bottom:1.2rem;font-size:0.85rem;color:var(--text-light)">チェックインは終了しました</div>`;
   }
 
   if (isChecked && myParticipants.length > 0) {
@@ -1073,7 +1111,6 @@ async function openActivity(id, title, dateStr, isChecked) {
     html += `<div class="empty-state" style="padding:1.5rem"><div class="empty-text">まだ他の参加者がいません</div></div>`;
   }
 
-  // PTA admin: send card to all
   if (currentProfile.is_pta_admin && isChecked) {
     html += `<div class="divider"></div>
       <button class="btn btn-sm btn-secondary" style="margin-top:0.5rem" onclick="openSendCardToAll('${id}', '${escHtml(title)}')">全参加者にPTAカードを送る</button>`;
