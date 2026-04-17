@@ -686,6 +686,9 @@
         </div>
         <button class="btn btn-primary" onclick="doLogin()">ログイン</button>
         <div id="login-error" class="error-msg"></div>
+        <div style="text-align:center;margin-top:1rem">
+          <button onclick="showResetPassword()" style="background:none;border:none;color:var(--text-light);font-size:0.82rem;cursor:pointer;text-decoration:underline;font-family:inherit">パスワードを忘れた方</button>
+        </div>
       </div>
       <div id="auth-signup" style="display:none">
         <div class="field">
@@ -816,11 +819,13 @@
             <div>
               <div style="font-weight:700;font-size:1.1rem" id="mypage-name"></div>
               <div style="font-size:0.85rem;color:var(--text-light)" id="mypage-grade"></div>
+              <div style="font-size:0.82rem;color:var(--text-light)" id="mypage-school"></div>
             </div>
           </div>
           <div id="mypage-admin" style="display:none;margin-bottom:0.8rem">
             <span class="admin-badge">PTA管理者</span>
           </div>
+          <button class="btn btn-sm btn-secondary" onclick="openEditProfile()">プロフィールを編集</button>
         </div>
         <div style="background:white;border-radius:16px;padding:1.2rem;border:1px solid var(--border);margin-bottom:0.8rem">
           <div style="font-size:0.9rem;color:var(--text-mid);margin-bottom:0.3rem">参加した活動</div>
@@ -830,7 +835,18 @@
           <div style="font-size:0.9rem;color:var(--text-mid);margin-bottom:0.3rem">受け取ったカード</div>
           <div style="font-size:1.8rem;font-weight:700;color:var(--terracotta)" id="mypage-card-count">0</div>
         </div>
-        <button class="btn btn-secondary" onclick="doLogout()">ログアウト</button>
+        <button class="btn btn-secondary" style="margin-bottom:0.8rem" onclick="doLogout()">ログアウト</button>
+        <button class="btn" style="background:transparent;color:#C0392B;border:1.5px solid #C0392B;font-size:0.85rem" onclick="confirmDeleteAccount()">退会・データ削除</button>
+      </div>
+
+      <!-- 管理者タブ -->
+      <div id="tab-admin" class="tab-panel">
+        <div class="section-title">管理者パネル</div>
+        <div style="display:flex;gap:8px;margin-bottom:1.2rem;flex-wrap:wrap">
+          <button class="btn btn-sm btn-secondary" onclick="loadAdminAlerts()" id="admin-alert-btn">36時間アラート</button>
+          <button class="btn btn-sm btn-secondary" onclick="loadAdminParticipants()">参加者一覧</button>
+        </div>
+        <div id="admin-content"></div>
       </div>
     </div>
 
@@ -853,12 +869,91 @@
         </svg>
         <span class="nav-label">マイページ</span>
       </button>
+      <button class="nav-item" id="nav-admin" style="display:none" onclick="switchTab('admin', this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        <span class="nav-label">管理</span>
+      </button>
     </nav>
   </div>
 
 </div><!-- /app -->
 
-<!-- ===== ACTIVITY DETAIL MODAL ===== -->
+<!-- ===== PROFILE EDIT MODAL ===== -->
+<div id="modal-edit-profile" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-edit-profile')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">プロフィール編集</div>
+    <div class="field">
+      <label>ニックネーム</label>
+      <input type="text" id="edit-nickname" placeholder="例：さくらママ">
+    </div>
+    <div class="field">
+      <label>所属学校</label>
+      <select id="edit-school">
+        <option value="">選択してください</option>
+        <optgroup label="練馬区立小学校">
+          <option>旭丘小学校</option><option>旭町小学校</option><option>大泉小学校</option><option>大泉学園小学校</option><option>大泉学園桜小学校</option><option>大泉学園緑小学校</option><option>大泉北小学校</option><option>大泉第一小学校</option><option>大泉第二小学校</option><option>大泉第三小学校</option><option>大泉第四小学校</option><option>大泉第六小学校</option><option>大泉西小学校</option><option>大泉東小学校</option><option>大泉南小学校</option><option>開進第一小学校</option><option>開進第二小学校</option><option>開進第三小学校</option><option>開進第四小学校</option><option>春日小学校</option><option>上石神井小学校</option><option>上石神井北小学校</option><option>北原小学校</option><option>北町小学校</option><option>北町西小学校</option><option>向山小学校</option><option>光和小学校</option><option>小竹小学校</option><option>下石神井小学校</option><option>石神井小学校</option><option>石神井台小学校</option><option>石神井西小学校</option><option>石神井東小学校</option><option>関町小学校</option><option>関町北小学校</option><option>泉新小学校</option><option>高松小学校</option><option>田柄小学校</option><option>田柄第二小学校</option><option>立野小学校</option><option>豊玉小学校</option><option>豊玉第二小学校</option><option>豊玉東小学校</option><option>豊玉南小学校</option><option>仲町小学校</option><option>中村小学校</option><option>中村西小学校</option><option>練馬小学校</option><option>練馬第二小学校</option><option>練馬第三小学校</option><option>練馬東小学校</option><option>橋戸小学校</option><option>早宮小学校</option><option>光が丘四季の香小学校</option><option>光が丘春の風小学校</option><option>光が丘夏の雲小学校</option><option>光が丘秋の陽小学校</option><option>光が丘第八小学校</option><option>富士見台小学校</option><option>豊溪小学校</option><option>南が丘小学校</option><option>南田中小学校</option><option>南町小学校</option><option>八坂小学校</option><option>谷原小学校</option>
+        </optgroup>
+        <optgroup label="国立・私立"><option>東京学芸大学附属大泉小学校</option><option>東京三育小学校</option></optgroup>
+        <optgroup label="その他"><option>区外の学校</option></optgroup>
+      </select>
+    </div>
+    <div class="field">
+      <label>区分・学年（複数選択可）</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--cream);border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:0.88rem;white-space:nowrap"><input type="checkbox" class="edit-grade-check" value="1年生"> 1年生</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--cream);border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:0.88rem;white-space:nowrap"><input type="checkbox" class="edit-grade-check" value="2年生"> 2年生</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--cream);border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:0.88rem;white-space:nowrap"><input type="checkbox" class="edit-grade-check" value="3年生"> 3年生</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--cream);border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:0.88rem;white-space:nowrap"><input type="checkbox" class="edit-grade-check" value="4年生"> 4年生</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--cream);border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:0.88rem;white-space:nowrap"><input type="checkbox" class="edit-grade-check" value="5年生"> 5年生</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--cream);border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:0.88rem;white-space:nowrap"><input type="checkbox" class="edit-grade-check" value="6年生"> 6年生</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--cream);border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:0.88rem;white-space:nowrap"><input type="checkbox" class="edit-grade-check" value="地域"> 地域</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--cream);border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:0.88rem;white-space:nowrap"><input type="checkbox" class="edit-grade-check" value="OB"> OB</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--cream);border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:0.88rem;white-space:nowrap"><input type="checkbox" class="edit-grade-check" value="OG"> OG</label>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveEditProfile()">保存する</button>
+    <div id="edit-profile-error" class="error-msg"></div>
+  </div>
+</div>
+
+<!-- ===== DELETE ACCOUNT MODAL ===== -->
+<div id="modal-delete" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-delete')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">退会・データ削除</div>
+    <div class="modal-sub">この操作は取り消せません。すべてのデータが完全に削除されます。</div>
+    <div style="background:#FDECEA;border-radius:12px;padding:1rem;margin-bottom:1.2rem;font-size:0.88rem;color:#922B21;line-height:1.6">
+      削除されるデータ：プロフィール・参加記録・送受信したカードすべて
+    </div>
+    <div class="field">
+      <label>確認のため「退会する」と入力してください</label>
+      <input type="text" id="delete-confirm-input" placeholder="退会する">
+    </div>
+    <button class="btn" style="background:#C0392B;color:white;margin-bottom:0.8rem" onclick="doDeleteAccount()">完全に削除して退会</button>
+    <button class="btn btn-secondary" onclick="closeModal('modal-delete')">キャンセル</button>
+    <div id="delete-error" class="error-msg"></div>
+  </div>
+</div>
+
+<!-- ===== PASSWORD RESET MODAL ===== -->
+<div id="modal-reset-pw" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-reset-pw')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">パスワード再設定</div>
+    <div class="modal-sub">登録メールアドレスに再設定リンクを送ります</div>
+    <div class="field">
+      <label>メールアドレス</label>
+      <input type="email" id="reset-email" placeholder="example@mail.com">
+    </div>
+    <button class="btn btn-primary" onclick="doResetPassword()">再設定メールを送る</button>
+    <div id="reset-error" class="error-msg"></div>
+    <div id="reset-success" style="display:none;background:#EEF5F0;border-radius:8px;padding:0.8rem;margin-top:0.8rem;font-size:0.88rem;color:var(--sage-dark);text-align:center">メールを送信しました。受信ボックスをご確認ください。</div>
+  </div>
+</div>
 <div id="modal-activity" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-activity')">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -1067,9 +1162,11 @@ function initMain() {
     (currentProfile.grades && currentProfile.grades.length > 0)
       ? currentProfile.grades.join('・')
       : currentProfile.grade || '';
+  document.getElementById('mypage-school').textContent = currentProfile.school || '';
   if (currentProfile.is_pta_admin) {
     document.getElementById('pta-create-btn').style.display = '';
     document.getElementById('mypage-admin').style.display = '';
+    document.getElementById('nav-admin').style.display = '';
   }
   loadActivities();
   loadCards();
@@ -1302,6 +1399,152 @@ async function createActivity() {
   closeModal('modal-create');
   showToast('活動を追加しました');
   loadActivities();
+}
+
+// ===== PASSWORD RESET =====
+function showResetPassword() {
+  document.getElementById('reset-email').value = document.getElementById('login-email').value;
+  document.getElementById('reset-error').classList.remove('show');
+  document.getElementById('reset-success').style.display = 'none';
+  openModal('modal-reset-pw');
+}
+
+async function doResetPassword() {
+  const email = document.getElementById('reset-email').value.trim();
+  const err = document.getElementById('reset-error');
+  err.classList.remove('show');
+  if (!email) { err.textContent = 'メールアドレスを入力してください'; err.classList.add('show'); return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://wawapta.github.io/musubu/'
+  });
+  if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
+  document.getElementById('reset-success').style.display = 'block';
+}
+
+// ===== PROFILE EDIT =====
+function openEditProfile() {
+  document.getElementById('edit-nickname').value = currentProfile.nickname || '';
+  document.getElementById('edit-school').value = currentProfile.school || '';
+  const currentGrades = currentProfile.grades || (currentProfile.grade ? [currentProfile.grade] : []);
+  document.querySelectorAll('.edit-grade-check').forEach(el => {
+    el.checked = currentGrades.includes(el.value);
+  });
+  document.getElementById('edit-profile-error').classList.remove('show');
+  openModal('modal-edit-profile');
+}
+
+async function saveEditProfile() {
+  const nickname = document.getElementById('edit-nickname').value.trim();
+  const school = document.getElementById('edit-school').value;
+  const grades = Array.from(document.querySelectorAll('.edit-grade-check:checked')).map(el => el.value);
+  const err = document.getElementById('edit-profile-error');
+  err.classList.remove('show');
+  if (!nickname) { err.textContent = 'ニックネームを入力してください'; err.classList.add('show'); return; }
+  if (!school) { err.textContent = '所属学校を選択してください'; err.classList.add('show'); return; }
+  if (grades.length === 0) { err.textContent = '学年・区分を1つ以上選択してください'; err.classList.add('show'); return; }
+  const grade = grades[0];
+  const { error } = await sb.from('profiles').update({ nickname, school, grade, grades }).eq('id', currentUser.id);
+  if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
+  await loadProfile();
+  closeModal('modal-edit-profile');
+  initMain();
+  showToast('プロフィールを更新しました');
+}
+
+// ===== DELETE ACCOUNT =====
+function confirmDeleteAccount() {
+  document.getElementById('delete-confirm-input').value = '';
+  document.getElementById('delete-error').classList.remove('show');
+  openModal('modal-delete');
+}
+
+async function doDeleteAccount() {
+  const input = document.getElementById('delete-confirm-input').value.trim();
+  const err = document.getElementById('delete-error');
+  err.classList.remove('show');
+  if (input !== '退会する') { err.textContent = '「退会する」と正確に入力してください'; err.classList.add('show'); return; }
+  // データ削除（RLSで本人のみ）
+  await sb.from('cards').delete().eq('from_user_id', currentUser.id);
+  await sb.from('cards').delete().eq('to_user_id', currentUser.id);
+  await sb.from('checkins').delete().eq('user_id', currentUser.id);
+  await sb.from('profiles').delete().eq('id', currentUser.id);
+  await sb.auth.signOut();
+  currentUser = null; currentProfile = null;
+  closeModal('modal-delete');
+  showToast('退会しました');
+  setTimeout(() => showScreen('auth'), 1000);
+}
+
+// ===== ADMIN: 36時間アラート =====
+async function loadAdminAlerts() {
+  const container = document.getElementById('admin-content');
+  container.innerHTML = '<div style="color:var(--text-light);font-size:0.9rem;padding:1rem 0">読み込み中...</div>';
+  const now = new Date();
+  const { data: activities } = await sb.from('activities').select('*').order('activity_date', { ascending: false });
+  const target36h = (activities || []).filter(a => {
+    const dayEnd = new Date(a.activity_date); dayEnd.setHours(23,59,59,999);
+    const since36h = new Date(dayEnd.getTime() + 36 * 60 * 60 * 1000);
+    const since48h = new Date(dayEnd.getTime() + 48 * 60 * 60 * 1000);
+    return now >= since36h && now <= since48h;
+  });
+  if (target36h.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">現在アラート対象の活動はありません</div></div>';
+    return;
+  }
+  let html = '<div class="section-title" style="margin-bottom:0.8rem">36時間アラート対象</div>';
+  for (const a of target36h) {
+    const { data: checkins } = await sb.from('checkins').select('user_id, profiles(id,nickname,grade)').eq('activity_id', a.id);
+    const { data: receivedCards } = await sb.from('cards').select('to_user_id').eq('activity_id', a.id);
+    const receivedIds = new Set((receivedCards || []).map(c => c.to_user_id));
+    const zeroReceivers = (checkins || []).filter(c => c.profiles && !receivedIds.has(c.user_id));
+    if (zeroReceivers.length === 0) continue;
+    html += `<div style="background:white;border-radius:12px;padding:1rem;border:1px solid var(--border);margin-bottom:0.8rem">
+      <div style="font-weight:700;margin-bottom:0.3rem">${escHtml(a.title)}</div>
+      <div style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.8rem">${new Date(a.activity_date).toLocaleDateString('ja-JP',{month:'short',day:'numeric'})}</div>`;
+    html += zeroReceivers.map(c => `
+      <div class="participant-item">
+        <div class="participant-info">
+          <div class="card-avatar">${c.profiles.nickname.charAt(0)}</div>
+          <div><div class="participant-name">${escHtml(c.profiles.nickname)}</div><span class="grade-badge">${escHtml(c.profiles.grade)}</span></div>
+        </div>
+        <button class="btn btn-sm btn-terracotta" onclick="openSendCardToUser('${c.user_id}','${escHtml(c.profiles.nickname)}','${a.id}','${escHtml(a.title)}')">カード送信</button>
+      </div>`).join('');
+    html += '</div>';
+  }
+  if (html === '<div class="section-title" style="margin-bottom:0.8rem">36時間アラート対象</div>') {
+    html += '<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">全員カードを受け取っています</div></div>';
+  }
+  container.innerHTML = html;
+}
+
+function openSendCardToUser(toUserId, toName, activityId, activityTitle) {
+  openSendCard(toUserId, toName, activityId, activityTitle);
+}
+
+// ===== ADMIN: 参加者一覧 =====
+async function loadAdminParticipants() {
+  const container = document.getElementById('admin-content');
+  container.innerHTML = '<div style="color:var(--text-light);font-size:0.9rem;padding:1rem 0">読み込み中...</div>';
+  const { data: activities } = await sb.from('activities').select('*').order('activity_date', { ascending: false }).limit(10);
+  if (!activities || activities.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🌱</div><div class="empty-text">活動がありません</div></div>';
+    return;
+  }
+  let html = '<div class="section-title" style="margin-bottom:0.8rem">活動別参加者</div>';
+  for (const a of activities.slice(0, 5)) {
+    const { data: checkins } = await sb.from('checkins').select('user_id, profiles(nickname,grade)').eq('activity_id', a.id);
+    const dateStr = new Date(a.activity_date).toLocaleDateString('ja-JP',{month:'short',day:'numeric'});
+    html += `<div style="background:white;border-radius:12px;padding:1rem;border:1px solid var(--border);margin-bottom:0.8rem">
+      <div style="font-weight:700;margin-bottom:0.2rem">${escHtml(a.title)}</div>
+      <div style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.6rem">${dateStr} · ${(checkins||[]).length}名参加</div>`;
+    if (checkins && checkins.length > 0) {
+      html += checkins.map(c => c.profiles ? `<div style="display:flex;align-items:center;gap:0.6rem;padding:0.4rem 0;border-bottom:1px solid var(--border)"><div class="card-avatar" style="width:28px;height:28px;font-size:0.75rem">${c.profiles.nickname.charAt(0)}</div><span style="font-size:0.88rem">${escHtml(c.profiles.nickname)}</span><span class="grade-badge">${escHtml(c.profiles.grade)}</span></div>` : '').join('');
+    } else {
+      html += '<div style="font-size:0.85rem;color:var(--text-light)">参加者なし</div>';
+    }
+    html += '</div>';
+  }
+  container.innerHTML = html;
 }
 
 // ===== LOGOUT =====
