@@ -28,7 +28,7 @@
 
   html, body {
     height: 100%;
-    background: var(--cream);
+    background: #F7F3EE;
     color: var(--text);
     font-family: 'Zen Kaku Gothic New', sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -44,7 +44,7 @@
   #loading {
     position: fixed;
     inset: 0;
-    background: var(--cream);
+    background: #F7F3EE;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -962,16 +962,22 @@ function selectTemplate(id) {
 
 // ===== INIT =====
 async function init() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) {
-    currentUser = session.user;
-    await loadProfile();
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      await loadProfile();
+    }
+  } catch(e) {
+    console.error('Init error:', e);
+  } finally {
+    const loading = document.getElementById('loading');
+    loading.style.opacity = '0';
+    setTimeout(() => {
+      loading.style.display = 'none';
+      routeUser();
+    }, 400);
   }
-  document.getElementById('loading').style.opacity = '0';
-  setTimeout(() => {
-    document.getElementById('loading').style.display = 'none';
-    routeUser();
-  }, 400);
 }
 
 async function loadProfile() {
