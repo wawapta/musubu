@@ -707,10 +707,54 @@
       </div>
       <div class="field">
         <label>所属学校</label>
-        <input type="text" id="setup-school" placeholder="例：南町小学校">
+        <select id="setup-school">
+          <option value="">選択してください</option>
+          <optgroup label="練馬区立小学校">
+            <option>旭丘小学校</option><option>旭町小学校</option>
+            <option>大泉小学校</option><option>大泉学園小学校</option>
+            <option>大泉学園桜小学校</option><option>大泉学園緑小学校</option>
+            <option>大泉北小学校</option><option>大泉第一小学校</option>
+            <option>大泉第二小学校</option><option>大泉第三小学校</option>
+            <option>大泉第四小学校</option><option>大泉第六小学校</option>
+            <option>大泉西小学校</option><option>大泉東小学校</option>
+            <option>大泉南小学校</option><option>開進第一小学校</option>
+            <option>開進第二小学校</option><option>開進第三小学校</option>
+            <option>開進第四小学校</option><option>春日小学校</option>
+            <option>上石神井小学校</option><option>上石神井北小学校</option>
+            <option>北原小学校</option><option>北町小学校</option>
+            <option>北町西小学校</option><option>向山小学校</option>
+            <option>光和小学校</option><option>小竹小学校</option>
+            <option>下石神井小学校</option><option>石神井小学校</option>
+            <option>石神井台小学校</option><option>石神井西小学校</option>
+            <option>石神井東小学校</option><option>関町小学校</option>
+            <option>関町北小学校</option><option>泉新小学校</option>
+            <option>高松小学校</option><option>田柄小学校</option>
+            <option>田柄第二小学校</option><option>立野小学校</option>
+            <option>豊玉小学校</option><option>豊玉第二小学校</option>
+            <option>豊玉東小学校</option><option>豊玉南小学校</option>
+            <option>仲町小学校</option><option>中村小学校</option>
+            <option>中村西小学校</option><option>練馬小学校</option>
+            <option>練馬第二小学校</option><option>練馬第三小学校</option>
+            <option>練馬東小学校</option><option>橋戸小学校</option>
+            <option>早宮小学校</option><option>光が丘四季の香小学校</option>
+            <option>光が丘春の風小学校</option><option>光が丘夏の雲小学校</option>
+            <option>光が丘秋の陽小学校</option><option>光が丘第八小学校</option>
+            <option>富士見台小学校</option><option>豊溪小学校</option>
+            <option>南が丘小学校</option><option>南田中小学校</option>
+            <option>南町小学校</option><option>八坂小学校</option>
+            <option>谷原小学校</option>
+          </optgroup>
+          <optgroup label="国立・私立">
+            <option>東京学芸大学附属大泉小学校</option>
+            <option>東京三育小学校</option>
+          </optgroup>
+          <optgroup label="その他">
+            <option>区外の学校</option>
+          </optgroup>
+        </select>
       </div>
       <div class="field">
-        <label>お子さんの学年（複数選択可）</label>
+        <label>区分・学年（複数選択可）</label>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px">
           <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer"><input type="checkbox" class="grade-check" value="1年生"> 1年生</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer"><input type="checkbox" class="grade-check" value="2年生"> 2年生</label>
@@ -718,6 +762,9 @@
           <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer"><input type="checkbox" class="grade-check" value="4年生"> 4年生</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer"><input type="checkbox" class="grade-check" value="5年生"> 5年生</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer"><input type="checkbox" class="grade-check" value="6年生"> 6年生</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer"><input type="checkbox" class="grade-check" value="地域"> 地域</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer"><input type="checkbox" class="grade-check" value="OB"> OB</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer"><input type="checkbox" class="grade-check" value="OG"> OG</label>
         </div>
       </div>
       <button class="btn btn-primary" onclick="saveProfile()">はじめる</button>
