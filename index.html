@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Musubu — はじめての一歩</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Kaisei+Opti:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cream: #F7F3EE;
+    --warm-white: #FDFAF6;
+    --sage: #7A9E7E;
+    --sage-light: #B5CDB8;
+    --sage-dark: #4A6B4E;
+    --terracotta: #C17F5A;
+    --terracotta-light: #E8C4A8;
+    --brown: #6B4C3B;
+    --text: #2C2018;
+    --text-mid: #6B5B4E;
+    --text-light: #A89880;
+    --border: #DDD5C8;
+    --shadow: rgba(107, 76, 59, 0.1);
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--cream);
+    color: var(--text);
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ===== LOADING ===== */
+  #loading {
+    position: fixed;
+    inset: 0;
+    background: var(--cream);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: opacity 0.4s;
+  }
+  .loading-inner {
+    text-align: center;
+  }
+  .loading-logo {
+    font-family: 'Kaisei Opti', serif;
+    font-size: 2.4rem;
+    color: var(--sage-dark);
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+  }
+  .loading-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--sage);
+    animation: pulse 1.2s ease-in-out infinite;
+    margin: 0 3px;
+  }
+  .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse {
+    0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  /* ===== SCREEN ===== */
+  .screen { display: none; flex-direction: column; min-height: 100vh; }
+  .screen.active { display: flex; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ===== AUTH SCREEN ===== */
+  #screen-auth {
+    background: var(--warm-white);
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+  }
+  .auth-logo {
+    font-family: 'Kaisei Opti', serif;
+    font-size: 3rem;
+    color: var(--sage-dark);
+    letter-spacing: 0.08em;
+    margin-bottom: 0.3rem;
+    text-align: center;
+  }
+  .auth-tagline {
+    color: var(--text-light);
+    font-size: 0.85rem;
+    text-align: center;
+    margin-bottom: 2.5rem;
+    letter-spacing: 0.1em;
+  }
+  .auth-card {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 4px 24px var(--shadow);
+    border: 1px solid var(--border);
+  }
+  .auth-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1.8rem;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .auth-tab {
+    flex: 1;
+    padding: 0.6rem;
+    text-align: center;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--cream);
+    color: var(--text-mid);
+    border: none;
+    font-family: inherit;
+  }
+  .auth-tab.active {
+    background: var(--sage-dark);
+    color: white;
+  }
+
+  /* ===== FORM ELEMENTS ===== */
+  .field { margin-bottom: 1.2rem; }
+  .field label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-mid);
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.05em;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--text);
+    background: var(--warm-white);
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--sage);
+  }
+  .field textarea { resize: vertical; min-height: 80px; }
+
+  .btn {
+    width: 100%;
+    padding: 0.85rem;
+    border: none;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .btn-primary {
+    background: var(--sage-dark);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--sage); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--sage-dark);
+    border: 1.5px solid var(--sage-dark);
+  }
+  .btn-secondary:hover { background: var(--sage-light); border-color: var(--sage-light); }
+  .btn-terracotta {
+    background: var(--terracotta);
+    color: white;
+  }
+  .btn-terracotta:hover { filter: brightness(1.05); }
+  .btn-sm {
+    width: auto;
+    padding: 0.45rem 1rem;
+    font-size: 0.85rem;
+  }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .error-msg {
+    color: #C0392B;
+    font-size: 0.82rem;
+    margin-top: 0.8rem;
+    text-align: center;
+    padding: 0.6rem;
+    background: #FDECEA;
+    border-radius: 8px;
+    display: none;
+  }
+  .error-msg.show { display: block; }
+
+  /* ===== HEADER ===== */
+  .header {
+    background: white;
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .header-logo {
+    font-family: 'Kaisei Opti', serif;
+    font-size: 1.5rem;
+    color: var(--sage-dark);
+    letter-spacing: 0.06em;
+  }
+  .header-user {
+    font-size: 0.82rem;
+    color: var(--text-mid);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--sage-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--sage-dark);
+  }
+
+  /* ===== BOTTOM NAV ===== */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    background: white;
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 10;
+  }
+  .nav-item {
+    flex: 1;
+    padding: 0.7rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    color: var(--text-light);
+  }
+  .nav-item.active { color: var(--sage-dark); }
+  .nav-item svg { width: 22px; height: 22px; }
+  .nav-label { font-size: 0.68rem; }
+
+  /* ===== MAIN CONTENT ===== */
+  .main-content {
+    flex: 1;
+    padding: 1.2rem 1rem 5rem;
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .section-title {
+    font-family: 'Kaisei Opti', serif;
+    font-size: 1.1rem;
+    color: var(--brown);
+    margin-bottom: 1rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* ===== TAB PANELS ===== */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fadeIn 0.25s ease; }
+
+  /* ===== ACTIVITY CARDS ===== */
+  .activity-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.2rem;
+    margin-bottom: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+  .activity-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px var(--shadow); }
+  .activity-card-title {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+  }
+  .activity-card-date {
+    font-size: 0.82rem;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .activity-card-footer {
+    margin-top: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .participant-count {
+    font-size: 0.82rem;
+    color: var(--sage-dark);
+    background: var(--sage-light);
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    opacity: 0.7;
+  }
+  .checked-badge {
+    font-size: 0.78rem;
+    color: var(--terracotta);
+    background: var(--terracotta-light);
+    padding: 0.2rem 0.7rem;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(44, 32, 24, 0.5);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .modal {
+    background: white;
+    border-radius: 24px 24px 0 0;
+    padding: 1.5rem 1.5rem 2.5rem;
+    width: 100%;
+    max-width: 600px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .modal-overlay.open .modal {
+    transform: translateY(0);
+  }
+  .modal-handle {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 1.2rem;
+  }
+  .modal-title {
+    font-family: 'Kaisei Opti', serif;
+    font-size: 1.3rem;
+    color: var(--brown);
+    margin-bottom: 0.3rem;
+  }
+  .modal-sub {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin-bottom: 1.5rem;
+  }
+
+  /* ===== CARD LIST ===== */
+  .card-item {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.2rem;
+    margin-bottom: 0.8rem;
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+  .card-item.pta-card {
+    background: linear-gradient(135deg, #FFF8F0, white);
+    border-color: var(--terracotta-light);
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.8rem;
+  }
+  .card-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--sage-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--sage-dark);
+    flex-shrink: 0;
+  }
+  .card-avatar.pta { background: var(--terracotta-light); color: var(--terracotta); }
+  .card-from { font-weight: 500; font-size: 0.95rem; }
+  .card-date { font-size: 0.75rem; color: var(--text-light); }
+  .card-activity {
+    font-size: 0.8rem;
+    color: var(--sage-dark);
+    background: var(--sage-light);
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 20px;
+    margin-bottom: 0.6rem;
+    opacity: 0.8;
+  }
+  .card-message {
+    font-size: 0.95rem;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .card-pta-label {
+    font-size: 0.75rem;
+    color: var(--terracotta);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.3rem;
+  }
+
+  /* ===== PARTICIPANT LIST ===== */
+  .participant-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .participant-item:last-child { border-bottom: none; }
+  .participant-info { display: flex; align-items: center; gap: 0.6rem; }
+  .participant-name { font-weight: 500; }
+  .grade-badge {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    background: var(--cream);
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+  }
+
+  /* ===== PROFILE SETUP ===== */
+  #screen-setup {
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    background: var(--warm-white);
+  }
+  .setup-card {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 4px 24px var(--shadow);
+    border: 1px solid var(--border);
+  }
+  .setup-icon {
+    font-size: 2.5rem;
+    text-align: center;
+    margin-bottom: 0.5rem;
+  }
+  .setup-title {
+    font-family: 'Kaisei Opti', serif;
+    font-size: 1.4rem;
+    text-align: center;
+    color: var(--brown);
+    margin-bottom: 0.4rem;
+  }
+  .setup-desc {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    text-align: center;
+    margin-bottom: 1.8rem;
+    line-height: 1.6;
+  }
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-light);
+  }
+  .empty-icon { font-size: 2.5rem; margin-bottom: 0.8rem; }
+  .empty-text { font-size: 0.9rem; line-height: 1.6; }
+
+  /* ===== PTA ADMIN ===== */
+  .admin-badge {
+    font-size: 0.7rem;
+    background: var(--terracotta);
+    color: white;
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 1.2rem 0; }
+
+  .toast {
+    position: fixed;
+    bottom: 5.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--sage-dark);
+    color: white;
+    padding: 0.7rem 1.5rem;
+    border-radius: 100px;
+    font-size: 0.88rem;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 100;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="loading-inner">
+    <div class="loading-logo">Musubu</div>
+    <div>
+      <span class="loading-dot"></span>
+      <span class="loading-dot"></span>
+      <span class="loading-dot"></span>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+
+  <!-- ===== AUTH SCREEN ===== -->
+  <div id="screen-auth" class="screen">
+    <div class="auth-logo">Musubu</div>
+    <div class="auth-tagline">はじめての一歩を、つなぐ</div>
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')">ログイン</button>
+        <button class="auth-tab" onclick="switchAuthTab('signup')">新規登録</button>
+      </div>
+      <div id="auth-login">
+        <div class="field">
+          <label>メールアドレス</label>
+          <input type="email" id="login-email" placeholder="example@mail.com">
+        </div>
+        <div class="field">
+          <label>パスワード</label>
+          <input type="password" id="login-password" placeholder="••••••••">
+        </div>
+        <button class="btn btn-primary" onclick="doLogin()">ログイン</button>
+        <div id="login-error" class="error-msg"></div>
+      </div>
+      <div id="auth-signup" style="display:none">
+        <div class="field">
+          <label>メールアドレス</label>
+          <input type="email" id="signup-email" placeholder="example@mail.com">
+        </div>
+        <div class="field">
+          <label>パスワード（6文字以上）</label>
+          <input type="password" id="signup-password" placeholder="••••••••">
+        </div>
+        <button class="btn btn-primary" onclick="doSignup()">登録する</button>
+        <div id="signup-error" class="error-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SETUP SCREEN ===== -->
+  <div id="screen-setup" class="screen">
+    <div class="setup-card">
+      <div class="setup-icon">👋</div>
+      <div class="setup-title">プロフィール設定</div>
+      <div class="setup-desc">ニックネームとお子さんの学年を<br>教えてください</div>
+      <div class="field">
+        <label>ニックネーム</label>
+        <input type="text" id="setup-nickname" placeholder="例：さくらママ">
+      </div>
+      <div class="field">
+        <label>お子さんの学年</label>
+        <select id="setup-grade">
+          <option value="">選択してください</option>
+          <option value="1年生">1年生</option>
+          <option value="2年生">2年生</option>
+          <option value="3年生">3年生</option>
+          <option value="4年生">4年生</option>
+          <option value="5年生">5年生</option>
+          <option value="6年生">6年生</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="saveProfile()">はじめる</button>
+      <div id="setup-error" class="error-msg"></div>
+    </div>
+  </div>
+
+  <!-- ===== MAIN SCREEN ===== -->
+  <div id="screen-main" class="screen" style="flex-direction:column">
+    <div class="header">
+      <div class="header-logo">Musubu</div>
+      <div class="header-user">
+        <div class="avatar" id="header-avatar"></div>
+        <span id="header-name"></span>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <!-- 活動タブ -->
+      <div id="tab-activities" class="tab-panel active">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <div class="section-title">活動一覧</div>
+          <div id="pta-create-btn" style="display:none">
+            <button class="btn btn-sm btn-terracotta" onclick="openCreateActivity()">＋ 活動追加</button>
+          </div>
+        </div>
+        <div id="activities-list"></div>
+      </div>
+
+      <!-- カードタブ -->
+      <div id="tab-cards" class="tab-panel">
+        <div class="section-title">受け取ったカード</div>
+        <div id="cards-list"></div>
+      </div>
+
+      <!-- マイページタブ -->
+      <div id="tab-mypage" class="tab-panel">
+        <div class="section-title">マイページ</div>
+        <div style="background:white;border-radius:16px;padding:1.4rem;border:1px solid var(--border);margin-bottom:1rem">
+          <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem">
+            <div class="avatar" style="width:52px;height:52px;font-size:1.2rem" id="mypage-avatar"></div>
+            <div>
+              <div style="font-weight:700;font-size:1.1rem" id="mypage-name"></div>
+              <div style="font-size:0.85rem;color:var(--text-light)" id="mypage-grade"></div>
+            </div>
+          </div>
+          <div id="mypage-admin" style="display:none;margin-bottom:0.8rem">
+            <span class="admin-badge">PTA管理者</span>
+          </div>
+        </div>
+        <div style="background:white;border-radius:16px;padding:1.2rem;border:1px solid var(--border);margin-bottom:0.8rem">
+          <div style="font-size:0.9rem;color:var(--text-mid);margin-bottom:0.3rem">参加した活動</div>
+          <div style="font-size:1.8rem;font-weight:700;color:var(--sage-dark)" id="mypage-checkin-count">0</div>
+        </div>
+        <div style="background:white;border-radius:16px;padding:1.2rem;border:1px solid var(--border);margin-bottom:1.5rem">
+          <div style="font-size:0.9rem;color:var(--text-mid);margin-bottom:0.3rem">受け取ったカード</div>
+          <div style="font-size:1.8rem;font-weight:700;color:var(--terracotta)" id="mypage-card-count">0</div>
+        </div>
+        <button class="btn btn-secondary" onclick="doLogout()">ログアウト</button>
+      </div>
+    </div>
+
+    <nav class="bottom-nav">
+      <button class="nav-item active" onclick="switchTab('activities', this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        <span class="nav-label">活動</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('cards', this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+        </svg>
+        <span class="nav-label">カード</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('mypage', this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+        </svg>
+        <span class="nav-label">マイページ</span>
+      </button>
+    </nav>
+  </div>
+
+</div><!-- /app -->
+
+<!-- ===== ACTIVITY DETAIL MODAL ===== -->
+<div id="modal-activity" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-activity')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div id="modal-activity-content"></div>
+  </div>
+</div>
+
+<!-- ===== SEND CARD MODAL ===== -->
+<div id="modal-card" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-card')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">サンクスカードを送る</div>
+    <div class="modal-sub" id="card-modal-sub"></div>
+    <div class="field">
+      <label>メッセージ（任意）</label>
+      <textarea id="card-message" placeholder="ありがとうございました！"></textarea>
+    </div>
+    <button class="btn btn-terracotta" onclick="sendCard()">送る 🌿</button>
+    <div id="card-error" class="error-msg"></div>
+  </div>
+</div>
+
+<!-- ===== CREATE ACTIVITY MODAL ===== -->
+<div id="modal-create" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-create')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">活動を追加</div>
+    <div class="field">
+      <label>活動名</label>
+      <input type="text" id="create-title" placeholder="例：図書室整備ボランティア">
+    </div>
+    <div class="field">
+      <label>日付</label>
+      <input type="date" id="create-date">
+    </div>
+    <button class="btn btn-primary" onclick="createActivity()">追加する</button>
+    <div id="create-error" class="error-msg"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://tvpuqilwayvhywywyqyt.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_6nTJbFOmhDyJyZOwkROt0A_Pah2zwkO';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentProfile = null;
+let selectedActivityId = null;
+let selectedToUserId = null;
+
+// ===== INIT =====
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    await loadProfile();
+  }
+  document.getElementById('loading').style.opacity = '0';
+  setTimeout(() => {
+    document.getElementById('loading').style.display = 'none';
+    routeUser();
+  }, 400);
+}
+
+async function loadProfile() {
+  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  currentProfile = data;
+}
+
+function routeUser() {
+  if (!currentUser) return showScreen('auth');
+  if (!currentProfile) return showScreen('setup');
+  showScreen('main');
+  initMain();
+}
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
+
+// ===== AUTH =====
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'signup'));
+  });
+  document.getElementById('auth-login').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('auth-signup').style.display = tab === 'signup' ? '' : 'none';
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const err = document.getElementById('login-error');
+  err.classList.remove('show');
+  if (!email || !password) { err.textContent = 'メールとパスワードを入力してください'; err.classList.add('show'); return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) { err.textContent = 'ログインに失敗しました: ' + error.message; err.classList.add('show'); return; }
+  currentUser = data.user;
+  await loadProfile();
+  routeUser();
+}
+
+async function doSignup() {
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+  const err = document.getElementById('signup-error');
+  err.classList.remove('show');
+  if (!email || !password) { err.textContent = 'メールとパスワードを入力してください'; err.classList.add('show'); return; }
+  if (password.length < 6) { err.textContent = 'パスワードは6文字以上にしてください'; err.classList.add('show'); return; }
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if (error) { err.textContent = '登録に失敗しました: ' + error.message; err.classList.add('show'); return; }
+  currentUser = data.user;
+  showScreen('setup');
+}
+
+// ===== PROFILE SETUP =====
+async function saveProfile() {
+  const nickname = document.getElementById('setup-nickname').value.trim();
+  const grade = document.getElementById('setup-grade').value;
+  const err = document.getElementById('setup-error');
+  err.classList.remove('show');
+  if (!nickname || !grade) { err.textContent = 'ニックネームと学年を入力してください'; err.classList.add('show'); return; }
+  const { error } = await sb.from('profiles').insert({ id: currentUser.id, nickname, grade });
+  if (error) { err.textContent = 'エラーが発生しました: ' + error.message; err.classList.add('show'); return; }
+  await loadProfile();
+  showScreen('main');
+  initMain();
+}
+
+// ===== MAIN =====
+function initMain() {
+  const initial = currentProfile.nickname.charAt(0);
+  document.getElementById('header-avatar').textContent = initial;
+  document.getElementById('header-name').textContent = currentProfile.nickname;
+  document.getElementById('mypage-avatar').textContent = initial;
+  document.getElementById('mypage-name').textContent = currentProfile.nickname;
+  document.getElementById('mypage-grade').textContent = currentProfile.grade;
+  if (currentProfile.is_pta_admin) {
+    document.getElementById('pta-create-btn').style.display = '';
+    document.getElementById('mypage-admin').style.display = '';
+  }
+  loadActivities();
+  loadCards();
+  loadMyStats();
+}
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  el.classList.add('active');
+}
+
+// ===== ACTIVITIES =====
+async function loadActivities() {
+  const { data: activities } = await sb.from('activities').select('*').order('activity_date', { ascending: false });
+  const { data: myCheckins } = await sb.from('checkins').select('activity_id').eq('user_id', currentUser.id);
+  const checkedIds = new Set((myCheckins || []).map(c => c.activity_id));
+  const container = document.getElementById('activities-list');
+
+  if (!activities || activities.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🌱</div><div class="empty-text">まだ活動はありません</div></div>`;
+    return;
+  }
+
+  container.innerHTML = activities.map(a => {
+    const isChecked = checkedIds.has(a.id);
+    const dateStr = new Date(a.activity_date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+    return `
+      <div class="activity-card" onclick="openActivity('${a.id}', '${escHtml(a.title)}', '${dateStr}', ${isChecked})">
+        <div class="activity-card-title">${escHtml(a.title)}</div>
+        <div class="activity-card-date">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          ${dateStr}
+        </div>
+        <div class="activity-card-footer">
+          <span></span>
+          ${isChecked ? '<span class="checked-badge">✓ 参加済み</span>' : '<span style="font-size:0.82rem;color:var(--text-light)">タップで詳細</span>'}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function openActivity(id, title, dateStr, isChecked) {
+  selectedActivityId = id;
+  const { data: checkins } = await sb.from('checkins').select('user_id, profiles(id, nickname, grade)').eq('activity_id', id);
+  const participants = (checkins || []).map(c => c.profiles).filter(Boolean);
+  const myParticipants = participants.filter(p => p.id !== currentUser.id);
+
+  let html = `
+    <div class="modal-title">${escHtml(title)}</div>
+    <div class="modal-sub">${dateStr}</div>
+  `;
+
+  if (!isChecked) {
+    html += `<button class="btn btn-primary" style="margin-bottom:1.2rem" onclick="doCheckin('${id}')">この活動に参加記録する</button>`;
+  } else {
+    html += `<div style="background:var(--sage-light);border-radius:10px;padding:0.7rem 1rem;margin-bottom:1.2rem;font-size:0.88rem;color:var(--sage-dark)">✓ 参加記録済みです</div>`;
+  }
+
+  if (isChecked && myParticipants.length > 0) {
+    html += `<div class="section-title" style="margin-bottom:0.8rem">一緒に参加した人</div>`;
+    html += myParticipants.map(p => `
+      <div class="participant-item">
+        <div class="participant-info">
+          <div class="card-avatar">${p.nickname.charAt(0)}</div>
+          <div>
+            <div class="participant-name">${escHtml(p.nickname)}</div>
+            <span class="grade-badge">${escHtml(p.grade)}</span>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-terracotta" onclick="openSendCard('${p.id}', '${escHtml(p.nickname)}', '${id}', '${escHtml(title)}')">ありがとう</button>
+      </div>
+    `).join('');
+  } else if (isChecked && myParticipants.length === 0) {
+    html += `<div class="empty-state" style="padding:1.5rem"><div class="empty-text">まだ他の参加者がいません</div></div>`;
+  }
+
+  // PTA admin: send card to all
+  if (currentProfile.is_pta_admin && isChecked) {
+    html += `<div class="divider"></div>
+      <button class="btn btn-sm btn-secondary" style="margin-top:0.5rem" onclick="openSendCardToAll('${id}', '${escHtml(title)}')">全参加者にPTAカードを送る</button>`;
+  }
+
+  document.getElementById('modal-activity-content').innerHTML = html;
+  openModal('modal-activity');
+}
+
+async function doCheckin(activityId) {
+  const { error } = await sb.from('checkins').insert({ user_id: currentUser.id, activity_id: activityId });
+  if (error) { showToast('チェックインに失敗しました'); return; }
+  closeModal('modal-activity');
+  showToast('参加記録しました 🌿');
+  loadActivities();
+}
+
+// ===== CARDS =====
+function openSendCard(toUserId, toName, activityId, activityTitle) {
+  selectedToUserId = toUserId;
+  selectedActivityId = activityId;
+  document.getElementById('card-modal-sub').textContent = `${toName}さんへ / ${activityTitle}`;
+  document.getElementById('card-message').value = '';
+  document.getElementById('card-error').classList.remove('show');
+  closeModal('modal-activity');
+  setTimeout(() => openModal('modal-card'), 200);
+}
+
+async function openSendCardToAll(activityId, activityTitle) {
+  selectedToUserId = 'ALL';
+  selectedActivityId = activityId;
+  document.getElementById('card-modal-sub').textContent = `全参加者へ（PTAより）/ ${activityTitle}`;
+  document.getElementById('card-message').value = '';
+  document.getElementById('card-error').classList.remove('show');
+  closeModal('modal-activity');
+  setTimeout(() => openModal('modal-card'), 200);
+}
+
+async function sendCard() {
+  const message = document.getElementById('card-message').value.trim();
+  const err = document.getElementById('card-error');
+  err.classList.remove('show');
+
+  if (selectedToUserId === 'ALL') {
+    const { data: checkins } = await sb.from('checkins').select('user_id').eq('activity_id', selectedActivityId).neq('user_id', currentUser.id);
+    if (!checkins || checkins.length === 0) { err.textContent = '送る相手がいません'; err.classList.add('show'); return; }
+    const inserts = checkins.map(c => ({ from_user_id: currentUser.id, to_user_id: c.user_id, activity_id: selectedActivityId, message, is_from_pta: true }));
+    const { error } = await sb.from('cards').insert(inserts);
+    if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
+  } else {
+    const { error } = await sb.from('cards').insert({ from_user_id: currentUser.id, to_user_id: selectedToUserId, activity_id: selectedActivityId, message, is_from_pta: currentProfile.is_pta_admin });
+    if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
+  }
+
+  closeModal('modal-card');
+  showToast('カードを送りました 💚');
+  loadCards();
+}
+
+async function loadCards() {
+  const { data: cards } = await sb.from('cards')
+    .select('*, from_profile:profiles!cards_from_user_id_fkey(nickname), activity:activities(title)')
+    .eq('to_user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  const container = document.getElementById('cards-list');
+  if (!cards || cards.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">💌</div><div class="empty-text">まだカードはありません<br>活動に参加するともらえます</div></div>`;
+    return;
+  }
+
+  container.innerHTML = cards.map(c => {
+    const fromName = c.is_from_pta ? 'PTA' : (c.from_profile?.nickname || '?');
+    const dateStr = new Date(c.created_at).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+    return `
+      <div class="card-item ${c.is_from_pta ? 'pta-card' : ''}">
+        ${c.is_from_pta ? '<div class="card-pta-label">PTA より</div>' : ''}
+        <div class="card-header">
+          <div class="card-avatar ${c.is_from_pta ? 'pta' : ''}">${fromName.charAt(0)}</div>
+          <div>
+            <div class="card-from">${escHtml(fromName)}</div>
+            <div class="card-date">${dateStr}</div>
+          </div>
+        </div>
+        ${c.activity ? `<div class="card-activity">${escHtml(c.activity.title)}</div>` : ''}
+        ${c.message ? `<div class="card-message">${escHtml(c.message)}</div>` : '<div class="card-message" style="color:var(--text-light)">（メッセージなし）</div>'}
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadMyStats() {
+  const { count: checkinCount } = await sb.from('checkins').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id);
+  const { count: cardCount } = await sb.from('cards').select('*', { count: 'exact', head: true }).eq('to_user_id', currentUser.id);
+  document.getElementById('mypage-checkin-count').textContent = checkinCount || 0;
+  document.getElementById('mypage-card-count').textContent = cardCount || 0;
+}
+
+// ===== CREATE ACTIVITY =====
+function openCreateActivity() {
+  document.getElementById('create-title').value = '';
+  document.getElementById('create-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('create-error').classList.remove('show');
+  openModal('modal-create');
+}
+
+async function createActivity() {
+  const title = document.getElementById('create-title').value.trim();
+  const date = document.getElementById('create-date').value;
+  const err = document.getElementById('create-error');
+  err.classList.remove('show');
+  if (!title || !date) { err.textContent = '活動名と日付を入力してください'; err.classList.add('show'); return; }
+  const { error } = await sb.from('activities').insert({ title, activity_date: date, created_by: currentUser.id });
+  if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
+  closeModal('modal-create');
+  showToast('活動を追加しました');
+  loadActivities();
+}
+
+// ===== LOGOUT =====
+async function doLogout() {
+  await sb.auth.signOut();
+  currentUser = null;
+  currentProfile = null;
+  showScreen('auth');
+}
+
+// ===== MODAL HELPERS =====
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeModalIfOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== UTILS =====
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>
