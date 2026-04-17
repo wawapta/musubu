@@ -1121,8 +1121,14 @@ async function doSignup() {
   err.classList.remove('show');
   if (!email || !password) { err.textContent = 'メールとパスワードを入力してください'; err.classList.add('show'); return; }
   if (password.length < 6) { err.textContent = 'パスワードは6文字以上にしてください'; err.classList.add('show'); return; }
-  const { data, error } = await sb.auth.signUp({ email, password });
-  if (error) { err.textContent = '登録に失敗しました: ' + error.message; err.classList.add('show'); return; }
+
+  // まず登録
+  const { error: signUpError } = await sb.auth.signUp({ email, password });
+  if (signUpError) { err.textContent = '登録に失敗しました: ' + signUpError.message; err.classList.add('show'); return; }
+
+  // 登録後に明示的にログインしてセッションを確立
+  const { data, error: signInError } = await sb.auth.signInWithPassword({ email, password });
+  if (signInError) { err.textContent = 'ログインに失敗しました: ' + signInError.message; err.classList.add('show'); return; }
   currentUser = data.user;
   showScreen('setup');
 }
