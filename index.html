@@ -531,6 +531,97 @@
 
   .divider { height: 1px; background: var(--border); margin: 1.2rem 0; }
 
+  /* ===== CARD TEMPLATES ===== */
+  .template-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 1.2rem;
+  }
+  .template-option {
+    border-radius: 14px;
+    padding: 14px 12px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .template-option.selected {
+    border-color: var(--sage-dark);
+    box-shadow: 0 0 0 3px rgba(74,107,78,0.15);
+  }
+  .template-option .t-num {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    opacity: 0.55;
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .template-option .t-title {
+    font-family: 'Kaisei Opti', serif;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    font-weight: 700;
+  }
+  .template-option .t-sub {
+    font-size: 0.68rem;
+    opacity: 0.5;
+    margin-top: 3px;
+  }
+  .template-option .t-motif {
+    position: absolute;
+    right: -8px; bottom: -8px;
+    width: 44px; height: 44px;
+    opacity: 0.15;
+    font-size: 36px;
+    line-height: 1;
+  }
+  /* 01 sage green */
+  .tpl-1 { background: #EEF5F0; color: #2C4830; }
+  .tpl-1.selected { border-color: #4A6B4E; }
+  /* 02 amber */
+  .tpl-2 { background: #FBF5EA; color: #4A3010; }
+  .tpl-2.selected { border-color: #8A6020; }
+  /* 03 coral */
+  .tpl-3 { background: #FBF0EC; color: #4A2010; }
+  .tpl-3.selected { border-color: #C17F5A; }
+  /* 04 blue */
+  .tpl-4 { background: #EBF3FB; color: #102840; }
+  .tpl-4.selected { border-color: #4A80B0; }
+  /* 05 purple */
+  .tpl-5 { background: #F4F0FC; color: #20104A; }
+  .tpl-5.selected { border-color: #7060B0; }
+
+  /* 受け取ったカードのテンプレート表示 */
+  .received-card-inner {
+    border-radius: 16px;
+    padding: 1.4rem;
+    margin-bottom: 0.3rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .received-card-inner.tpl-1 { background: #EEF5F0; color: #2C4830; }
+  .received-card-inner.tpl-2 { background: #FBF5EA; color: #4A3010; }
+  .received-card-inner.tpl-3 { background: #FBF0EC; color: #4A2010; }
+  .received-card-inner.tpl-4 { background: #EBF3FB; color: #102840; }
+  .received-card-inner.tpl-5 { background: #F4F0FC; color: #20104A; }
+  .received-card-inner.pta-tpl { background: linear-gradient(135deg, #FFF8F0, #FDF5EC); color: #4A2010; }
+  .received-card-deco {
+    position: absolute;
+    right: -12px; bottom: -12px;
+    font-size: 56px;
+    opacity: 0.1;
+    line-height: 1;
+  }
+  .received-card-tpl-title {
+    font-family: 'Kaisei Opti', serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+  }
+
   .toast {
     position: fixed;
     bottom: 5.5rem;
@@ -724,9 +815,42 @@
     <div class="modal-handle"></div>
     <div class="modal-title">サンクスカードを送る</div>
     <div class="modal-sub" id="card-modal-sub"></div>
+    <div style="font-size:0.82rem;font-weight:500;color:var(--text-mid);margin-bottom:0.6rem;letter-spacing:0.05em">カードを選ぶ</div>
+    <div class="template-grid">
+      <div class="template-option tpl-1 selected" onclick="selectTemplate(1)" id="tpl-1">
+        <div class="t-num">01</div>
+        <div class="t-title">一緒に活動して<br>くれてありがとう</div>
+        <div class="t-sub">基本のありがとう</div>
+        <div class="t-motif">🌿</div>
+      </div>
+      <div class="template-option tpl-2" onclick="selectTemplate(2)" id="tpl-2">
+        <div class="t-num">02</div>
+        <div class="t-title">おかげでスムーズに<br>進みました</div>
+        <div class="t-sub">助かった感謝</div>
+        <div class="t-motif">✨</div>
+      </div>
+      <div class="template-option tpl-3" onclick="selectTemplate(3)" id="tpl-3">
+        <div class="t-num">03</div>
+        <div class="t-title">声をかけてくれて<br>助かりました</div>
+        <div class="t-sub">はじめての参加に</div>
+        <div class="t-motif">🌸</div>
+      </div>
+      <div class="template-option tpl-4" onclick="selectTemplate(4)" id="tpl-4">
+        <div class="t-num">04</div>
+        <div class="t-title">また一緒に<br>活動しましょう</div>
+        <div class="t-sub">次につなぐ</div>
+        <div class="t-motif">🤝</div>
+      </div>
+      <div class="template-option tpl-5" onclick="selectTemplate(5)" id="tpl-5">
+        <div class="t-num">05</div>
+        <div class="t-title">いつも<br>ありがとうございます</div>
+        <div class="t-sub">顔なじみへ</div>
+        <div class="t-motif">🌼</div>
+      </div>
+    </div>
     <div class="field">
-      <label>メッセージ（任意）</label>
-      <textarea id="card-message" placeholder="ありがとうございました！"></textarea>
+      <label>ひとこと（任意・100文字以内）</label>
+      <textarea id="card-message" placeholder="ありがとうございました！" maxlength="100"></textarea>
     </div>
     <button class="btn btn-terracotta" onclick="sendCard()">送る 🌿</button>
     <div id="card-error" class="error-msg"></div>
@@ -763,6 +887,21 @@ let currentUser = null;
 let currentProfile = null;
 let selectedActivityId = null;
 let selectedToUserId = null;
+let selectedTemplateId = 1;
+
+const TEMPLATES = {
+  1: { title: '一緒に活動してくれてありがとう', motif: '🌿' },
+  2: { title: 'おかげでスムーズに進みました', motif: '✨' },
+  3: { title: '声をかけてくれて助かりました', motif: '🌸' },
+  4: { title: 'また一緒に活動しましょう', motif: '🤝' },
+  5: { title: 'いつもありがとうございます', motif: '🌼' },
+};
+
+function selectTemplate(id) {
+  selectedTemplateId = id;
+  document.querySelectorAll('.template-option').forEach(el => el.classList.remove('selected'));
+  document.getElementById('tpl-' + id).classList.add('selected');
+}
 
 // ===== INIT =====
 async function init() {
@@ -959,6 +1098,7 @@ function openSendCard(toUserId, toName, activityId, activityTitle) {
   document.getElementById('card-modal-sub').textContent = `${toName}さんへ / ${activityTitle}`;
   document.getElementById('card-message').value = '';
   document.getElementById('card-error').classList.remove('show');
+  selectTemplate(1);
   closeModal('modal-activity');
   setTimeout(() => openModal('modal-card'), 200);
 }
@@ -969,6 +1109,7 @@ async function openSendCardToAll(activityId, activityTitle) {
   document.getElementById('card-modal-sub').textContent = `全参加者へ（PTAより）/ ${activityTitle}`;
   document.getElementById('card-message').value = '';
   document.getElementById('card-error').classList.remove('show');
+  selectTemplate(1);
   closeModal('modal-activity');
   setTimeout(() => openModal('modal-card'), 200);
 }
@@ -981,11 +1122,11 @@ async function sendCard() {
   if (selectedToUserId === 'ALL') {
     const { data: checkins } = await sb.from('checkins').select('user_id').eq('activity_id', selectedActivityId).neq('user_id', currentUser.id);
     if (!checkins || checkins.length === 0) { err.textContent = '送る相手がいません'; err.classList.add('show'); return; }
-    const inserts = checkins.map(c => ({ from_user_id: currentUser.id, to_user_id: c.user_id, activity_id: selectedActivityId, message, is_from_pta: true }));
+    const inserts = checkins.map(c => ({ from_user_id: currentUser.id, to_user_id: c.user_id, activity_id: selectedActivityId, message, template_id: selectedTemplateId, is_from_pta: true }));
     const { error } = await sb.from('cards').insert(inserts);
     if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
   } else {
-    const { error } = await sb.from('cards').insert({ from_user_id: currentUser.id, to_user_id: selectedToUserId, activity_id: selectedActivityId, message, is_from_pta: currentProfile.is_pta_admin });
+    const { error } = await sb.from('cards').insert({ from_user_id: currentUser.id, to_user_id: selectedToUserId, activity_id: selectedActivityId, message, template_id: selectedTemplateId, is_from_pta: currentProfile.is_pta_admin });
     if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
   }
 
@@ -1009,18 +1150,24 @@ async function loadCards() {
   container.innerHTML = cards.map(c => {
     const fromName = c.is_from_pta ? 'PTA' : (c.from_profile?.nickname || '?');
     const dateStr = new Date(c.created_at).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+    const tplId = c.template_id || 1;
+    const tpl = TEMPLATES[tplId] || TEMPLATES[1];
+    const tplClass = c.is_from_pta ? 'pta-tpl' : `tpl-${tplId}`;
     return `
       <div class="card-item ${c.is_from_pta ? 'pta-card' : ''}">
-        ${c.is_from_pta ? '<div class="card-pta-label">PTA より</div>' : ''}
-        <div class="card-header">
+        <div class="received-card-inner ${tplClass}">
+          <div class="received-card-deco">${tpl.motif}</div>
+          ${c.is_from_pta ? '<div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;opacity:0.6;margin-bottom:0.4rem">PTA より</div>' : ''}
+          <div class="received-card-tpl-title">${escHtml(tpl.title)}</div>
+          ${c.message ? `<div style="font-size:0.9rem;line-height:1.6;margin-top:0.4rem;opacity:0.8">${escHtml(c.message)}</div>` : ''}
+        </div>
+        <div class="card-header" style="margin-top:0.6rem;margin-bottom:0">
           <div class="card-avatar ${c.is_from_pta ? 'pta' : ''}">${fromName.charAt(0)}</div>
           <div>
-            <div class="card-from">${escHtml(fromName)}</div>
-            <div class="card-date">${dateStr}</div>
+            <div class="card-from">${escHtml(fromName)} より</div>
+            <div class="card-date">${c.activity ? escHtml(c.activity.title) + ' · ' : ''}${dateStr}</div>
           </div>
         </div>
-        ${c.activity ? `<div class="card-activity">${escHtml(c.activity.title)}</div>` : ''}
-        ${c.message ? `<div class="card-message">${escHtml(c.message)}</div>` : '<div class="card-message" style="color:var(--text-light)">（メッセージなし）</div>'}
       </div>
     `;
   }).join('');
