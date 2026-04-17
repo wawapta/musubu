@@ -1034,9 +1034,15 @@ async function saveProfile() {
   const err = document.getElementById('setup-error');
   err.classList.remove('show');
   if (!nickname) { err.textContent = 'ニックネームを入力してください'; err.classList.add('show'); return; }
-  if (!school) { err.textContent = '所属学校を入力してください'; err.classList.add('show'); return; }
-  if (grades.length === 0) { err.textContent = '学年を1つ以上選択してください'; err.classList.add('show'); return; }
-  const grade = grades[0]; // 後方互換用（既存カラム）
+  if (!school) { err.textContent = '所属学校を選択してください'; err.classList.add('show'); return; }
+  if (grades.length === 0) { err.textContent = '学年・区分を1つ以上選択してください'; err.classList.add('show'); return; }
+
+  // セッションを再取得してcurrentUserを確実に確立
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { err.textContent = 'セッションが切れています。再度ログインしてください'; err.classList.add('show'); return; }
+  currentUser = session.user;
+
+  const grade = grades[0];
   const { error } = await sb.from('profiles').insert({ id: currentUser.id, nickname, grade, school, grades });
   if (error) { err.textContent = 'エラーが発生しました: ' + error.message; err.classList.add('show'); return; }
   await loadProfile();
