@@ -667,7 +667,7 @@
 <div id="app">
 
   <!-- ===== AUTH SCREEN ===== -->
-  <div id="screen-auth" class="screen">
+  <div id="screen-auth" class="screen active">
     <div class="auth-logo">Musubu</div>
     <div class="auth-tagline">はじめての一歩を、つなぐ</div>
     <div class="auth-card">
@@ -1061,18 +1061,17 @@ async function init() {
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
       currentUser = session.user;
-      await loadProfile();
+      try { await loadProfile(); } catch(e) { console.warn('loadProfile error:', e); }
     }
   } catch(e) {
     console.error('Init error:', e);
-  } finally {
-    const loading = document.getElementById('loading');
-    loading.style.opacity = '0';
-    setTimeout(() => {
-      loading.style.display = 'none';
-      routeUser();
-    }, 400);
   }
+  const loading = document.getElementById('loading');
+  loading.style.opacity = '0';
+  setTimeout(() => {
+    loading.style.display = 'none';
+    routeUser();
+  }, 400);
 }
 
 async function loadProfile() {
