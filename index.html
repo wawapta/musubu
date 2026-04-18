@@ -809,8 +809,12 @@
 
       <!-- カードタブ -->
       <div id="tab-cards" class="tab-panel">
-        <div class="section-title">受け取ったカード</div>
-        <div id="cards-list"></div>
+        <div style="display:flex;gap:0;margin-bottom:1rem;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+          <button id="card-tab-received" class="auth-tab active" style="flex:1" onclick="switchCardTab('received')">もらった</button>
+          <button id="card-tab-sent" class="auth-tab" style="flex:1" onclick="switchCardTab('sent')">おくった</button>
+        </div>
+        <div id="cards-received-list"></div>
+        <div id="cards-sent-list" style="display:none"></div>
       </div>
 
       <!-- マイページタブ -->
@@ -846,8 +850,9 @@
       <div id="tab-admin" class="tab-panel">
         <div class="section-title">管理者パネル</div>
         <div style="display:flex;gap:8px;margin-bottom:1.2rem;flex-wrap:wrap">
-          <button class="btn btn-sm btn-secondary" onclick="loadAdminAlerts()" id="admin-alert-btn">36時間アラート</button>
+          <button class="btn btn-sm btn-secondary" onclick="loadAdminAlerts()">36時間アラート</button>
           <button class="btn btn-sm btn-secondary" onclick="loadAdminParticipants()">参加者一覧</button>
+          <button class="btn btn-sm btn-secondary" onclick="exportCSV()">CSVエクスポート</button>
         </div>
         <div id="admin-content"></div>
       </div>
@@ -1353,42 +1358,124 @@ async function sendCard() {
   loadCards();
 }
 
+// ===== CARD TAB SWITCH =====
+function switchCardTab(tab) {
+  document.getElementById('card-tab-received').classList.toggle('active', tab === 'received');
+  document.getElementById('card-tab-sent').classList.toggle('active', tab === 'sent');
+  document.getElementById('cards-received-list').style.display = tab === 'received' ? '' : 'none';
+  document.getElementById('cards-sent-list').style.display = tab === 'sent' ? '' : 'none';
+  if (tab === 'sent' && !document.getElementById('cards-sent-list').dataset.loaded) {
+    loadSentCards();
+  }
+}
+
 async function loadCards() {
   const { data: cards } = await sb.from('cards')
     .select('*, from_profile:profiles!cards_from_user_id_fkey(nickname), activity:activities(title)')
     .eq('to_user_id', currentUser.id)
     .order('created_at', { ascending: false });
 
-  const container = document.getElementById('cards-list');
+  const container = document.getElementById('cards-received-list');
   if (!cards || cards.length === 0) {
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">💌</div><div class="empty-text">まだカードはありません<br>活動に参加するともらえます</div></div>`;
     return;
   }
+  container.innerHTML = cards.map(c => renderReceivedCard(c)).join('');
+}
 
+async function loadSentCards() {
+  const container = document.getElementById('cards-sent-list');
+  container.innerHTML = '<div style="color:var(--text-light);font-size:0.9rem;padding:1rem 0">読み込み中...</div>';
+  const { data: cards } = await sb.from('cards')
+    .select('*, to_profile:profiles!cards_to_user_id_fkey(nickname), activity:activities(title)')
+    .eq('from_user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  container.dataset.loaded = '1';
+  if (!cards || cards.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">💌</div><div class="empty-text">まだ送ったカードはありません</div></div>`;
+    return;
+  }
   container.innerHTML = cards.map(c => {
-    const fromName = c.is_from_pta ? 'PTA' : (c.from_profile?.nickname || '?');
+    const toName = c.is_from_pta ? '全参加者' : (c.to_profile?.nickname || '?');
     const dateStr = new Date(c.created_at).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+    const tpl = TEMPLATES[c.template_id || 1] || TEMPLATES[1];
     const tplId = c.template_id || 1;
-    const tpl = TEMPLATES[tplId] || TEMPLATES[1];
-    const tplClass = c.is_from_pta ? 'pta-tpl' : `tpl-${tplId}`;
     return `
-      <div class="card-item ${c.is_from_pta ? 'pta-card' : ''}">
-        <div class="received-card-inner ${tplClass}">
+      <div class="card-item">
+        <div class="received-card-inner tpl-${tplId}" style="opacity:0.85">
           <div class="received-card-deco">${tpl.motif}</div>
-          ${c.is_from_pta ? '<div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;opacity:0.6;margin-bottom:0.4rem">PTA より</div>' : ''}
           <div class="received-card-tpl-title">${escHtml(tpl.title)}</div>
           ${c.message ? `<div style="font-size:0.9rem;line-height:1.6;margin-top:0.4rem;opacity:0.8">${escHtml(c.message)}</div>` : ''}
         </div>
         <div class="card-header" style="margin-top:0.6rem;margin-bottom:0">
-          <div class="card-avatar ${c.is_from_pta ? 'pta' : ''}">${fromName.charAt(0)}</div>
+          <div class="card-avatar">${toName.charAt(0)}</div>
           <div>
-            <div class="card-from">${escHtml(fromName)} より</div>
+            <div class="card-from">${escHtml(toName)} へ</div>
             <div class="card-date">${c.activity ? escHtml(c.activity.title) + ' · ' : ''}${dateStr}</div>
           </div>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
+}
+
+function renderReceivedCard(c) {
+  const fromName = c.is_from_pta ? 'PTA' : (c.from_profile?.nickname || '?');
+  const dateStr = new Date(c.created_at).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+  const tplId = c.template_id || 1;
+  const tpl = TEMPLATES[tplId] || TEMPLATES[1];
+  const tplClass = c.is_from_pta ? 'pta-tpl' : `tpl-${tplId}`;
+  return `
+    <div class="card-item ${c.is_from_pta ? 'pta-card' : ''}">
+      <div class="received-card-inner ${tplClass}">
+        <div class="received-card-deco">${tpl.motif}</div>
+        ${c.is_from_pta ? '<div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;opacity:0.6;margin-bottom:0.4rem">PTA より</div>' : ''}
+        <div class="received-card-tpl-title">${escHtml(tpl.title)}</div>
+        ${c.message ? `<div style="font-size:0.9rem;line-height:1.6;margin-top:0.4rem;opacity:0.8">${escHtml(c.message)}</div>` : ''}
+      </div>
+      <div class="card-header" style="margin-top:0.6rem;margin-bottom:0">
+        <div class="card-avatar ${c.is_from_pta ? 'pta' : ''}">${fromName.charAt(0)}</div>
+        <div>
+          <div class="card-from">${escHtml(fromName)} より</div>
+          <div class="card-date">${c.activity ? escHtml(c.activity.title) + ' · ' : ''}${dateStr}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ===== CSV EXPORT =====
+async function exportCSV() {
+  showToast('CSVを生成中...');
+  const { data: checkins } = await sb.from('checkins')
+    .select('created_at, profiles(nickname, grade, school), activities(title, activity_date)')
+    .order('created_at', { ascending: false });
+  const { data: cards } = await sb.from('cards')
+    .select('created_at, template_id, message, is_from_pta, from_profile:profiles!cards_from_user_id_fkey(nickname), to_profile:profiles!cards_to_user_id_fkey(nickname), activity:activities(title)')
+    .order('created_at', { ascending: false });
+
+  let csv = '\uFEFF'; // BOM for Excel
+  csv += '【参加記録】\n';
+  csv += '日時,ニックネーム,学年,学校,活動名,活動日\n';
+  (checkins || []).forEach(c => {
+    const d = new Date(c.created_at).toLocaleString('ja-JP');
+    csv += `"${d}","${c.profiles?.nickname||''}","${c.profiles?.grade||''}","${c.profiles?.school||''}","${c.activities?.title||''}","${c.activities?.activity_date||''}"\n`;
+  });
+  csv += '\n【カード送受信】\n';
+  csv += '日時,送信者,受信者,テンプレート,ひとこと,活動名,PTA送信\n';
+  (cards || []).forEach(c => {
+    const d = new Date(c.created_at).toLocaleString('ja-JP');
+    const tpl = TEMPLATES[c.template_id || 1]?.title || '';
+    csv += `"${d}","${c.from_profile?.nickname||''}","${c.to_profile?.nickname||''}","${tpl}","${(c.message||'').replace(/"/g,'""')}","${c.activity?.title||''}","${c.is_from_pta?'はい':'いいえ'}"\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `musubu_export_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSVをダウンロードしました');
 }
 
 async function loadMyStats() {
