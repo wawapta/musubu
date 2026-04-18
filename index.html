@@ -1061,13 +1061,18 @@ function selectTemplate(id) {
 // ===== INIT =====
 async function init() {
   try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) {
-      currentUser = session.user;
+    // getUser()はサーバー検証するため削除済みユーザーを弾ける
+    const { data: { user }, error } = await sb.auth.getUser();
+    if (user && !error) {
+      currentUser = user;
       try { await loadProfile(); } catch(e) { console.warn('loadProfile error:', e); }
+    } else {
+      // 無効なセッションをクリア
+      await sb.auth.signOut();
     }
   } catch(e) {
     console.error('Init error:', e);
+    try { await sb.auth.signOut(); } catch(_) {}
   }
   const loading = document.getElementById('loading');
   loading.style.opacity = '0';
