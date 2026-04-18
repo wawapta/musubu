@@ -710,7 +710,7 @@
     <div class="setup-card">
       <div class="setup-icon">👋</div>
       <div class="setup-title">プロフィール設定</div>
-      <div class="setup-desc">ニックネーム・学校・学年を<br>教えてください</div>
+      <div class="setup-desc">登録完了！<br>ニックネーム・学校・学年を教えてください</div>
       <div class="field">
         <label>ニックネーム</label>
         <input type="text" id="setup-nickname" placeholder="例：さくらママ">
@@ -1061,18 +1061,18 @@ function selectTemplate(id) {
 // ===== INIT =====
 async function init() {
   try {
-    // getUser()はサーバー検証するため削除済みユーザーを弾ける
     const { data: { user }, error } = await sb.auth.getUser();
     if (user && !error) {
       currentUser = user;
       try { await loadProfile(); } catch(e) { console.warn('loadProfile error:', e); }
     } else {
-      // 無効なセッションをクリア
       await sb.auth.signOut();
+      currentUser = null;
     }
   } catch(e) {
     console.error('Init error:', e);
     try { await sb.auth.signOut(); } catch(_) {}
+    currentUser = null;
   }
   const loading = document.getElementById('loading');
   loading.style.opacity = '0';
@@ -1083,8 +1083,13 @@ async function init() {
 }
 
 async function loadProfile() {
-  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-  currentProfile = data;
+  if (!currentUser) return;
+  const { data, error } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  if (error && error.code !== 'PGRST116') {
+    // PGRST116 = row not found (正常、プロフィール未作成)
+    console.warn('loadProfile error:', error);
+  }
+  currentProfile = data || null;
 }
 
 function routeUser() {
