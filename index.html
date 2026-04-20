@@ -803,6 +803,11 @@
             <button class="btn btn-sm btn-terracotta" onclick="openCreateActivity()">＋ 活動追加</button>
           </div>
         </div>
+        <div style="display:flex;gap:0;margin-bottom:1rem;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+          <button id="act-tab-all" class="auth-tab active" style="flex:1" onclick="switchActivityFilter('all')">すべて</button>
+          <button id="act-tab-school" class="auth-tab" style="flex:1" onclick="switchActivityFilter('school')">学内</button>
+          <button id="act-tab-fed" class="auth-tab" style="flex:1" onclick="switchActivityFilter('fed')">小P連</button>
+        </div>
         <div id="activities-list"></div>
       </div>
 
@@ -846,6 +851,12 @@
         </div>
         <button class="btn btn-secondary" style="margin-bottom:0.8rem" onclick="doLogout()">ログアウト</button>
         <button class="btn" style="background:transparent;color:#C0392B;border:1.5px solid #C0392B;font-size:0.85rem" onclick="confirmDeleteAccount()">退会・データ削除</button>
+
+        <div style="border-top:1px solid var(--border);margin-top:1.5rem;padding-top:1rem;font-size:0.8rem;color:var(--text-light);line-height:1.8">
+          <div style="margin-bottom:0.3rem"><a href="#" onclick="event.preventDefault();openModal('modal-terms')" style="color:var(--text-mid);text-decoration:underline">利用規約</a> · <a href="#" onclick="event.preventDefault();openModal('modal-privacy')" style="color:var(--text-mid);text-decoration:underline">プライバシーポリシー</a></div>
+          <div>問題・不適切利用の通報：<a href="mailto:nerima-sho-p-ren@example.com" style="color:var(--sage-dark)">nerima-sho-p-ren@example.com</a></div>
+          <div style="margin-top:0.3rem;font-size:0.72rem">練馬区小学校PTA連合協議会</div>
+        </div>
       </div>
 
       <!-- 管理者タブ -->
@@ -903,6 +914,92 @@
   </div>
 
 </div><!-- /app -->
+
+<!-- ===== TERMS MODAL ===== -->
+<div id="modal-terms" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-terms')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">利用規約</div>
+    <div style="font-size:0.88rem;line-height:1.8;color:var(--text);max-height:60vh;overflow-y:auto">
+      <p style="margin-bottom:0.8rem">本規約は、練馬区小学校PTA連合協議会（以下「運営」）が提供するMusubu（以下「本サービス」）の利用条件を定めるものです。</p>
+      <p style="margin-bottom:0.4rem;font-weight:700">第1条（目的）</p>
+      <p style="margin-bottom:0.8rem">本サービスは、PTA活動・ボランティア活動で出会った保護者同士の関係が生まれるきっかけを整えることを目的とします。営利目的・政治的利用・宗教的勧誘には利用できません。</p>
+      <p style="margin-bottom:0.4rem;font-weight:700">第2条（利用資格）</p>
+      <p style="margin-bottom:0.8rem">練馬区の小学校に通う児童の保護者、地域関係者、OB・OGの方が利用できます。</p>
+      <p style="margin-bottom:0.4rem;font-weight:700">第3条（禁止事項）</p>
+      <p style="margin-bottom:0.4rem">以下の行為を禁止します。違反の場合、アカウント停止・削除の措置をとります。</p>
+      <ul style="margin:0 0 0.8rem 1.2rem">
+        <li>他の利用者への嫌がらせ・誹謗中傷</li>
+        <li>営業・勧誘・宣伝行為</li>
+        <li>虚偽情報の登録・なりすまし</li>
+        <li>本サービス外での第三者への個人情報の開示</li>
+        <li>本サービスの運営を妨げる行為</li>
+      </ul>
+      <p style="margin-bottom:0.4rem;font-weight:700">第4条（免責事項）</p>
+      <p style="margin-bottom:0.8rem">本サービスを通じて発生した利用者間のトラブルについて、運営は責任を負いません。</p>
+      <p style="margin-bottom:0.4rem;font-weight:700">第5条（規約の変更）</p>
+      <p style="margin-bottom:0.8rem">本規約は必要に応じて変更することがあります。重要な変更は本サービス上で告知します。</p>
+      <p style="margin-bottom:0.4rem;font-weight:700">第6条（お問い合わせ）</p>
+      <p style="margin-bottom:0.4rem">nerima-sho-p-ren@example.com</p>
+      <p style="font-size:0.78rem;color:var(--text-light);margin-top:1rem">2026年4月制定</p>
+    </div>
+    <button class="btn btn-secondary" style="margin-top:1rem" onclick="closeModal('modal-terms')">閉じる</button>
+  </div>
+</div>
+
+<!-- ===== PRIVACY MODAL ===== -->
+<div id="modal-privacy" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-privacy')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">プライバシーポリシー</div>
+    <div style="font-size:0.88rem;line-height:1.8;color:var(--text);max-height:60vh;overflow-y:auto">
+      <p style="margin-bottom:0.8rem">練馬区小学校PTA連合協議会（以下「運営」）は、Musubu（以下「本サービス」）における個人情報の取扱いについて、以下のとおり定めます。</p>
+      <p style="margin-bottom:0.4rem;font-weight:700">1. 取得する情報</p>
+      <ul style="margin:0 0 0.8rem 1.2rem">
+        <li>メールアドレス（ログイン・通知に使用）</li>
+        <li>ニックネーム（表示名）</li>
+        <li>所属学校・子どもの学年</li>
+      </ul>
+      <p style="margin-bottom:0.8rem">本名および子どもの氏名は取得しません。</p>
+      <p style="margin-bottom:0.4rem;font-weight:700">2. 利用目的</p>
+      <ul style="margin:0 0 0.8rem 1.2rem">
+        <li>保護者同士の交流促進のため</li>
+        <li>サービス運営・改善のため</li>
+      </ul>
+      <p style="margin-bottom:0.8rem">営業・勧誘・個人評価には利用しません。</p>
+      <p style="margin-bottom:0.4rem;font-weight:700">3. 第三者提供</p>
+      <p style="margin-bottom:0.8rem">外部への個人情報提供は一切行いません。</p>
+      <p style="margin-bottom:0.4rem;font-weight:700">4. 分析・統計</p>
+      <p style="margin-bottom:0.8rem">匿名統計のみ実施し、個人ランキング・序列化は行いません。</p>
+      <p style="margin-bottom:0.4rem;font-weight:700">5. データ削除</p>
+      <p style="margin-bottom:0.8rem">退会操作により、すべてのデータを完全に削除します。</p>
+      <p style="margin-bottom:0.4rem;font-weight:700">6. お問い合わせ</p>
+      <p style="margin-bottom:0.4rem">nerima-sho-p-ren@example.com</p>
+      <p style="font-size:0.78rem;color:var(--text-light);margin-top:1rem">2026年4月制定</p>
+    </div>
+    <button class="btn btn-secondary" style="margin-top:1rem" onclick="closeModal('modal-privacy')">閉じる</button>
+  </div>
+</div>
+
+<!-- ===== CHECKIN CARD PROMPT MODAL ===== -->
+<div id="modal-prompt-card" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-prompt-card')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="text-align:center;padding:0.5rem 0 1.5rem">
+      <div style="font-size:2.5rem;margin-bottom:0.5rem">🌿</div>
+      <div class="modal-title" style="text-align:center;margin-bottom:0.3rem">参加ありがとうございます</div>
+      <div style="font-size:0.85rem;color:var(--text-mid);line-height:1.6">
+        「<span id="prompt-activity-title"></span>」には<br>
+        他に <span id="prompt-participant-count" style="font-weight:700;color:var(--sage-dark)"></span>名の方が参加しています
+      </div>
+    </div>
+    <div style="background:#EEF5F0;border-radius:12px;padding:1rem;margin-bottom:1.2rem;font-size:0.88rem;color:var(--sage-dark);line-height:1.7;text-align:center">
+      一緒に参加した方に<br>サンクスカードを送ってみませんか？
+    </div>
+    <button class="btn btn-terracotta" style="margin-bottom:0.6rem" onclick="promptGoToSend()">カードを送る 💚</button>
+    <button class="btn btn-secondary" onclick="closeModal('modal-prompt-card')">あとで</button>
+  </div>
+</div>
 
 <!-- ===== CREATE FEDERATION EVENT MODAL ===== -->
 <div id="modal-create-fed" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-create-fed')">
@@ -1258,6 +1355,16 @@ function switchTab(tab, el) {
   el.classList.add('active');
 }
 
+let activityFilter = 'all';
+
+function switchActivityFilter(filter) {
+  activityFilter = filter;
+  document.getElementById('act-tab-all').classList.toggle('active', filter === 'all');
+  document.getElementById('act-tab-school').classList.toggle('active', filter === 'school');
+  document.getElementById('act-tab-fed').classList.toggle('active', filter === 'fed');
+  loadActivities();
+}
+
 // ===== ACTIVITIES =====
 async function loadActivities() {
   const { data: activities } = await sb.from('activities').select('*').order('activity_date', { ascending: false });
@@ -1267,7 +1374,7 @@ async function loadActivities() {
   const now = new Date();
 
   // 3段階フィルタリング＋status='closed'除外
-  const visible = (activities || []).filter(a => {
+  let visible = (activities || []).filter(a => {
     if (a.status === 'closed') return false;
     const actDate = new Date(a.activity_date);
     const dayEnd = new Date(actDate);
@@ -1275,6 +1382,13 @@ async function loadActivities() {
     const limit48h = new Date(dayEnd.getTime() + 48 * 60 * 60 * 1000);
     return now <= limit48h;
   });
+
+  // フィルタータブ
+  if (activityFilter === 'school') {
+    visible = visible.filter(a => !a.is_federation_event);
+  } else if (activityFilter === 'fed') {
+    visible = visible.filter(a => a.is_federation_event);
+  }
 
   if (visible.length === 0) {
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">🌱</div><div class="empty-text">まだ活動はありません</div></div>`;
@@ -1374,6 +1488,38 @@ async function doCheckin(activityId) {
   closeModal('modal-activity');
   showToast('参加記録しました 🌿');
   loadActivities();
+
+  // カード送信プロンプト（一緒に参加した人がいれば誘導）
+  const { data: checkins } = await sb.from('checkins').select('user_id, profiles(id, nickname, grade)').eq('activity_id', activityId).neq('user_id', currentUser.id);
+  const others = (checkins || []).filter(c => c.profiles);
+  if (others.length > 0) {
+    // 活動情報を取得
+    const { data: activity } = await sb.from('activities').select('title').eq('id', activityId).single();
+    const activityTitle = activity?.title || '';
+    setTimeout(() => openPromptCard(activityId, activityTitle, others.length), 600);
+  }
+}
+
+function openPromptCard(activityId, activityTitle, participantCount) {
+  selectedActivityId = activityId;
+  document.getElementById('prompt-activity-title').textContent = activityTitle;
+  document.getElementById('prompt-participant-count').textContent = participantCount;
+  openModal('modal-prompt-card');
+}
+
+function promptGoToSend() {
+  closeModal('modal-prompt-card');
+  // 活動詳細画面を開く（送信先一覧が見える）
+  const now = new Date();
+  sb.from('activities').select('*').eq('id', selectedActivityId).single().then(({ data: a }) => {
+    if (!a) return;
+    const actDate = new Date(a.activity_date);
+    const dayEnd = new Date(actDate); dayEnd.setHours(23,59,59,999);
+    const isToday = now <= dayEnd;
+    const isWithin48h = !isToday && now <= new Date(dayEnd.getTime() + 48 * 60 * 60 * 1000);
+    const dateStr = actDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+    openActivity(a.id, a.title, dateStr, true, isToday, isWithin48h);
+  });
 }
 
 async function undoCheckin(activityId) {
@@ -1432,16 +1578,33 @@ async function sendCard() {
   const err = document.getElementById('card-error');
   err.classList.remove('show');
 
+  if (message.length > 100) {
+    err.textContent = 'ひとことは100文字以内にしてください'; err.classList.add('show'); return;
+  }
+
   let insertedCardIds = [];
 
   if (selectedToUserId === 'ALL') {
     const { data: checkins } = await sb.from('checkins').select('user_id').eq('activity_id', selectedActivityId).neq('user_id', currentUser.id);
     if (!checkins || checkins.length === 0) { err.textContent = '送る相手がいません'; err.classList.add('show'); return; }
-    const inserts = checkins.map(c => ({ from_user_id: currentUser.id, to_user_id: c.user_id, activity_id: selectedActivityId, message, template_id: selectedTemplateId, is_from_pta: true }));
+    // 既に送信済みの相手を除外
+    const { data: existing } = await sb.from('cards').select('to_user_id').eq('activity_id', selectedActivityId).eq('from_user_id', currentUser.id);
+    const sentSet = new Set((existing || []).map(c => c.to_user_id));
+    const targets = checkins.filter(c => !sentSet.has(c.user_id));
+    if (targets.length === 0) { err.textContent = 'すでに全員に送信済みです'; err.classList.add('show'); return; }
+    const inserts = targets.map(c => ({ from_user_id: currentUser.id, to_user_id: c.user_id, activity_id: selectedActivityId, message, template_id: selectedTemplateId, is_from_pta: true }));
     const { data, error } = await sb.from('cards').insert(inserts).select('id');
     if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
     insertedCardIds = (data || []).map(d => d.id);
   } else {
+    // 1活動1人1回の重複チェック
+    if (selectedActivityId) {
+      const { count: existCount } = await sb.from('cards').select('*', { count: 'exact', head: true })
+        .eq('activity_id', selectedActivityId).eq('from_user_id', currentUser.id).eq('to_user_id', selectedToUserId);
+      if (existCount > 0) {
+        err.textContent = 'この方にはすでにカードを送っています'; err.classList.add('show'); return;
+      }
+    }
     const row = { from_user_id: currentUser.id, to_user_id: selectedToUserId, message, template_id: selectedTemplateId, is_from_pta: currentProfile.is_pta_admin };
     if (selectedActivityId) row.activity_id = selectedActivityId;
     const { data, error } = await sb.from('cards').insert(row).select('id').single();
