@@ -1340,20 +1340,29 @@ async function sendCard() {
   const err = document.getElementById('card-error');
   err.classList.remove('show');
 
+  let insertedCardIds = [];
+
   if (selectedToUserId === 'ALL') {
     const { data: checkins } = await sb.from('checkins').select('user_id').eq('activity_id', selectedActivityId).neq('user_id', currentUser.id);
     if (!checkins || checkins.length === 0) { err.textContent = '送る相手がいません'; err.classList.add('show'); return; }
     const inserts = checkins.map(c => ({ from_user_id: currentUser.id, to_user_id: c.user_id, activity_id: selectedActivityId, message, template_id: selectedTemplateId, is_from_pta: true }));
-    const { error } = await sb.from('cards').insert(inserts);
+    const { data, error } = await sb.from('cards').insert(inserts).select('id');
     if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
+    insertedCardIds = (data || []).map(d => d.id);
   } else {
-    const { error } = await sb.from('cards').insert({ from_user_id: currentUser.id, to_user_id: selectedToUserId, activity_id: selectedActivityId, message, template_id: selectedTemplateId, is_from_pta: currentProfile.is_pta_admin });
+    const { data, error } = await sb.from('cards').insert({ from_user_id: currentUser.id, to_user_id: selectedToUserId, activity_id: selectedActivityId, message, template_id: selectedTemplateId, is_from_pta: currentProfile.is_pta_admin }).select('id').single();
     if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
+    if (data) insertedCardIds = [data.id];
   }
 
   closeModal('modal-card');
   showToast('カードを送りました 💚');
   loadCards();
+
+  // メール通知を非同期で送信（失敗してもUI上はエラーにしない）
+  for (const cardId of insertedCardIds) {
+    sb.functions.invoke('send-card-notification', { body: { cardId } }).catch(e => console.warn('Notification failed:', e));
+  }
 }
 
 // ===== CARD TAB SWITCH =====
