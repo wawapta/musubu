@@ -1030,6 +1030,11 @@
       <input type="text" id="edit-nickname" placeholder="例：さくらママ">
     </div>
     <div class="field">
+      <label>メールアドレス</label>
+      <input type="email" id="edit-email" placeholder="example@mail.com">
+      <div style="font-size:0.72rem;color:var(--text-light);margin-top:0.3rem;line-height:1.5">変更すると新しいアドレスへ確認メールが届きます。メール内のリンクをクリックすると変更が確定します。</div>
+    </div>
+    <div class="field">
       <label>所属学校</label>
       <select id="edit-school">
         <option value="">選択してください</option>
@@ -1792,6 +1797,7 @@ async function doResetPassword() {
 // ===== PROFILE EDIT =====
 function openEditProfile() {
   document.getElementById('edit-nickname').value = currentProfile.nickname || '';
+  document.getElementById('edit-email').value = currentUser.email || '';
   document.getElementById('edit-school').value = currentProfile.school || '';
   const currentGrades = currentProfile.grades || (currentProfile.grade ? [currentProfile.grade] : []);
   document.querySelectorAll('.edit-grade-check').forEach(el => {
@@ -1803,20 +1809,32 @@ function openEditProfile() {
 
 async function saveEditProfile() {
   const nickname = document.getElementById('edit-nickname').value.trim();
+  const newEmail = document.getElementById('edit-email').value.trim();
   const school = document.getElementById('edit-school').value;
   const grades = Array.from(document.querySelectorAll('.edit-grade-check:checked')).map(el => el.value);
   const err = document.getElementById('edit-profile-error');
   err.classList.remove('show');
   if (!nickname) { err.textContent = 'ニックネームを入力してください'; err.classList.add('show'); return; }
+  if (!newEmail) { err.textContent = 'メールアドレスを入力してください'; err.classList.add('show'); return; }
   if (!school) { err.textContent = '所属学校を選択してください'; err.classList.add('show'); return; }
   if (grades.length === 0) { err.textContent = '学年・区分を1つ以上選択してください'; err.classList.add('show'); return; }
+
   const grade = grades[0];
-  const { error } = await sb.from('profiles').update({ nickname, school, grade, grades }).eq('id', currentUser.id);
-  if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
+  const { error: profErr } = await sb.from('profiles').update({ nickname, school, grade, grades }).eq('id', currentUser.id);
+  if (profErr) { err.textContent = 'エラー: ' + profErr.message; err.classList.add('show'); return; }
+
+  // メールアドレス変更があれば確認メール送信
+  let emailChanged = false;
+  if (newEmail !== currentUser.email) {
+    const { error: emailErr } = await sb.auth.updateUser({ email: newEmail });
+    if (emailErr) { err.textContent = 'メール変更エラー: ' + emailErr.message; err.classList.add('show'); return; }
+    emailChanged = true;
+  }
+
   await loadProfile();
   closeModal('modal-edit-profile');
   initMain();
-  showToast('プロフィールを更新しました');
+  showToast(emailChanged ? '新しいアドレスに確認メールを送りました' : 'プロフィールを更新しました');
 }
 
 // ===== DELETE ACCOUNT =====
