@@ -1333,7 +1333,10 @@ async function openActivity(id, title, dateStr, isChecked, isToday, isWithin48h)
   if (isToday && !isChecked) {
     html += `<button class="btn btn-primary" style="margin-bottom:1.2rem" onclick="doCheckin('${id}')">この活動に参加記録する</button>`;
   } else if (isChecked) {
-    html += `<div style="background:var(--sage-light);border-radius:10px;padding:0.7rem 1rem;margin-bottom:1.2rem;font-size:0.88rem;color:var(--sage-dark)">✓ 参加記録済みです</div>`;
+    html += `<div style="background:var(--sage-light);border-radius:10px;padding:0.7rem 1rem;margin-bottom:1.2rem;display:flex;align-items:center;justify-content:space-between;gap:0.8rem;flex-wrap:wrap">
+      <span style="font-size:0.88rem;color:var(--sage-dark)">✓ 参加記録済みです</span>
+      <button class="btn btn-sm" style="background:transparent;color:var(--text-mid);border:1px solid var(--border);padding:0.35rem 0.8rem;font-size:0.78rem" onclick="undoCheckin('${id}')">参加を取り消す</button>
+    </div>`;
   } else if (!isToday && !isChecked) {
     html += `<div style="background:var(--cream);border-radius:10px;padding:0.7rem 1rem;margin-bottom:1.2rem;font-size:0.85rem;color:var(--text-light)">チェックインは終了しました</div>`;
   }
@@ -1371,6 +1374,34 @@ async function doCheckin(activityId) {
   closeModal('modal-activity');
   showToast('参加記録しました 🌿');
   loadActivities();
+}
+
+async function undoCheckin(activityId) {
+  // 自分がその活動で送受信したカードがあるか確認
+  const { count: sentCount } = await sb.from('cards').select('*', { count: 'exact', head: true })
+    .eq('activity_id', activityId).eq('from_user_id', currentUser.id);
+  const { count: receivedCount } = await sb.from('cards').select('*', { count: 'exact', head: true })
+    .eq('activity_id', activityId).eq('to_user_id', currentUser.id);
+
+  let confirmMsg = '参加記録を取り消しますか？';
+  if (sentCount > 0 || receivedCount > 0) {
+    confirmMsg = `参加記録を取り消しますか？\nこの活動で送ったカード(${sentCount}枚)・受け取ったカード(${receivedCount}枚)も削除されます。`;
+  }
+  if (!confirm(confirmMsg)) return;
+
+  // 関連カードを削除
+  if (sentCount > 0) await sb.from('cards').delete().eq('activity_id', activityId).eq('from_user_id', currentUser.id);
+  if (receivedCount > 0) await sb.from('cards').delete().eq('activity_id', activityId).eq('to_user_id', currentUser.id);
+
+  // チェックインを削除
+  const { error } = await sb.from('checkins').delete().eq('user_id', currentUser.id).eq('activity_id', activityId);
+  if (error) { showToast('エラー: ' + error.message); return; }
+
+  closeModal('modal-activity');
+  showToast('参加を取り消しました');
+  loadActivities();
+  loadCards();
+  loadMyStats();
 }
 
 // ===== CARDS =====
