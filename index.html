@@ -849,8 +849,11 @@
       <div id="tab-admin" class="tab-panel">
         <div class="section-title">管理者パネル</div>
         <div style="display:flex;gap:8px;margin-bottom:1.2rem;flex-wrap:wrap">
+          <button class="btn btn-sm btn-secondary" onclick="loadAdminDashboard()">ダッシュボード</button>
+          <button class="btn btn-sm btn-secondary" onclick="loadAdminEvents()">イベント管理</button>
           <button class="btn btn-sm btn-secondary" onclick="loadAdminAlerts()">36時間アラート</button>
           <button class="btn btn-sm btn-secondary" onclick="loadAdminParticipants()">参加者一覧</button>
+          <button class="btn btn-sm btn-secondary" onclick="loadAdminCardSend()">個別カード送信</button>
           <button class="btn btn-sm btn-secondary" onclick="exportCSV()">CSVエクスポート</button>
         </div>
         <div id="admin-content"></div>
@@ -887,6 +890,24 @@
   </div>
 
 </div><!-- /app -->
+
+<!-- ===== EDIT EVENT MODAL ===== -->
+<div id="modal-edit-event" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-edit-event')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">活動を編集</div>
+    <div class="field">
+      <label>活動名</label>
+      <input type="text" id="edit-event-title">
+    </div>
+    <div class="field">
+      <label>日付</label>
+      <input type="date" id="edit-event-date">
+    </div>
+    <button class="btn btn-primary" onclick="saveEditEvent()">保存</button>
+    <div id="edit-event-error" class="error-msg"></div>
+  </div>
+</div>
 
 <!-- ===== PROFILE EDIT MODAL ===== -->
 <div id="modal-edit-profile" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-edit-profile')">
@@ -1012,6 +1033,24 @@
     </div>
     <button class="btn btn-terracotta" onclick="sendCard()">送る 🌿</button>
     <div id="card-error" class="error-msg"></div>
+  </div>
+</div>
+
+<!-- ===== EDIT ACTIVITY MODAL ===== -->
+<div id="modal-edit-activity" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-edit-activity')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">活動を編集</div>
+    <div class="field">
+      <label>活動名</label>
+      <input type="text" id="edit-activity-title">
+    </div>
+    <div class="field">
+      <label>日付</label>
+      <input type="date" id="edit-activity-date">
+    </div>
+    <button class="btn btn-primary" onclick="saveEditActivity()">保存する</button>
+    <div id="edit-activity-error" class="error-msg"></div>
   </div>
 </div>
 
@@ -1209,13 +1248,14 @@ async function loadActivities() {
   const container = document.getElementById('activities-list');
   const now = new Date();
 
-  // 3段階フィルタリング
+  // 3段階フィルタリング＋status='closed'除外
   const visible = (activities || []).filter(a => {
+    if (a.status === 'closed') return false;
     const actDate = new Date(a.activity_date);
     const dayEnd = new Date(actDate);
     dayEnd.setHours(23, 59, 59, 999);
     const limit48h = new Date(dayEnd.getTime() + 48 * 60 * 60 * 1000);
-    return now <= limit48h; // 48h経過後は非表示
+    return now <= limit48h;
   });
 
   if (visible.length === 0) {
@@ -1350,7 +1390,9 @@ async function sendCard() {
     if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
     insertedCardIds = (data || []).map(d => d.id);
   } else {
-    const { data, error } = await sb.from('cards').insert({ from_user_id: currentUser.id, to_user_id: selectedToUserId, activity_id: selectedActivityId, message, template_id: selectedTemplateId, is_from_pta: currentProfile.is_pta_admin }).select('id').single();
+    const row = { from_user_id: currentUser.id, to_user_id: selectedToUserId, message, template_id: selectedTemplateId, is_from_pta: currentProfile.is_pta_admin };
+    if (selectedActivityId) row.activity_id = selectedActivityId;
+    const { data, error } = await sb.from('cards').insert(row).select('id').single();
     if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
     if (data) insertedCardIds = [data.id];
   }
@@ -1359,7 +1401,6 @@ async function sendCard() {
   showToast('カードを送りました 💚');
   loadCards();
 
-  // メール通知を非同期で送信（失敗してもUI上はエラーにしない）
   for (const cardId of insertedCardIds) {
     sb.functions.invoke('send-card-notification', { body: { cardId } }).catch(e => console.warn('Notification failed:', e));
   }
@@ -1587,6 +1628,179 @@ async function doDeleteAccount() {
   setTimeout(() => showScreen('auth'), 1000);
 }
 
+// ===== ADMIN: ダッシュボード =====
+async function loadAdminDashboard() {
+  const container = document.getElementById('admin-content');
+  container.innerHTML = '<div style="color:var(--text-light);font-size:0.9rem;padding:1rem 0">読み込み中...</div>';
+
+  const { count: userCount } = await sb.from('profiles').select('*', { count: 'exact', head: true });
+  const { count: activityCount } = await sb.from('activities').select('*', { count: 'exact', head: true });
+  const { count: checkinCount } = await sb.from('checkins').select('*', { count: 'exact', head: true });
+  const { count: cardCount } = await sb.from('cards').select('*', { count: 'exact', head: true });
+
+  // 参加者のうちカード受信した人の割合
+  const { data: allCheckins } = await sb.from('checkins').select('user_id, activity_id');
+  const { data: allCards } = await sb.from('cards').select('to_user_id, activity_id');
+  const cardKeys = new Set((allCards || []).map(c => `${c.to_user_id}_${c.activity_id}`));
+  const receivedCount = (allCheckins || []).filter(c => cardKeys.has(`${c.user_id}_${c.activity_id}`)).length;
+  const receiveRate = allCheckins && allCheckins.length > 0 ? Math.round(receivedCount / allCheckins.length * 100) : 0;
+
+  container.innerHTML = `
+    <div class="section-title" style="margin-bottom:0.8rem">運用状況</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:1rem">
+      <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:1rem">
+        <div style="font-size:0.8rem;color:var(--text-mid);margin-bottom:0.3rem">登録者</div>
+        <div style="font-size:1.6rem;font-weight:700;color:var(--sage-dark)">${userCount || 0}</div>
+      </div>
+      <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:1rem">
+        <div style="font-size:0.8rem;color:var(--text-mid);margin-bottom:0.3rem">活動数</div>
+        <div style="font-size:1.6rem;font-weight:700;color:var(--sage-dark)">${activityCount || 0}</div>
+      </div>
+      <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:1rem">
+        <div style="font-size:0.8rem;color:var(--text-mid);margin-bottom:0.3rem">のべ参加</div>
+        <div style="font-size:1.6rem;font-weight:700;color:var(--sage-dark)">${checkinCount || 0}</div>
+      </div>
+      <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:1rem">
+        <div style="font-size:0.8rem;color:var(--text-mid);margin-bottom:0.3rem">カード送信</div>
+        <div style="font-size:1.6rem;font-weight:700;color:var(--terracotta)">${cardCount || 0}</div>
+      </div>
+    </div>
+    <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:0.8rem">
+      <div style="font-size:0.85rem;color:var(--text-mid);margin-bottom:0.5rem">カード受信率（参加者のうち受け取った人の割合）</div>
+      <div style="display:flex;align-items:baseline;gap:0.3rem">
+        <div style="font-size:2rem;font-weight:700;color:var(--sage-dark)">${receiveRate}</div>
+        <div style="font-size:1rem;color:var(--text-mid)">%</div>
+      </div>
+      <div style="background:var(--cream);height:6px;border-radius:3px;margin-top:0.6rem;overflow:hidden">
+        <div style="background:var(--sage);height:100%;width:${receiveRate}%"></div>
+      </div>
+    </div>
+  `;
+}
+
+// ===== ADMIN: イベント管理 =====
+async function loadAdminEvents() {
+  const container = document.getElementById('admin-content');
+  container.innerHTML = '<div style="color:var(--text-light);font-size:0.9rem;padding:1rem 0">読み込み中...</div>';
+  const { data: activities } = await sb.from('activities').select('*').order('activity_date', { ascending: false });
+
+  if (!activities || activities.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🌱</div><div class="empty-text">活動がありません</div></div>';
+    return;
+  }
+
+  const now = new Date();
+  container.innerHTML = '<div class="section-title" style="margin-bottom:0.8rem">イベント管理</div>' +
+    activities.map(a => {
+      const dateStr = new Date(a.activity_date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+      const isClosed = a.status === 'closed';
+      const actDate = new Date(a.activity_date); actDate.setHours(23,59,59,999);
+      const isPast = now > actDate;
+      return `
+        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:0.6rem">
+          <div style="display:flex;justify-content:space-between;align-items:start;gap:0.5rem;margin-bottom:0.4rem">
+            <div style="flex:1">
+              <div style="font-weight:700;margin-bottom:0.2rem">${escHtml(a.title)}</div>
+              <div style="font-size:0.82rem;color:var(--text-light)">${dateStr}</div>
+            </div>
+            ${isClosed ? '<span style="font-size:0.7rem;background:#E8E6E0;color:#6B5B4E;padding:0.15rem 0.5rem;border-radius:10px">終了</span>' :
+              isPast ? '<span style="font-size:0.7rem;background:#FBF5EA;color:#8A6020;padding:0.15rem 0.5rem;border-radius:10px">日付経過</span>' :
+              '<span style="font-size:0.7rem;background:#EEF5F0;color:#4A6B4E;padding:0.15rem 0.5rem;border-radius:10px">公開中</span>'}
+          </div>
+          <div style="display:flex;gap:6px;margin-top:0.6rem">
+            <button class="btn btn-sm btn-secondary" onclick="openEditActivity('${a.id}','${escHtml(a.title)}','${a.activity_date}')">編集</button>
+            ${!isClosed ? `<button class="btn btn-sm" style="background:transparent;color:#8A6020;border:1.5px solid #C89A4A;padding:0.45rem 1rem;font-size:0.85rem" onclick="closeActivity('${a.id}')">終了する</button>` : ''}
+            <button class="btn btn-sm" style="background:transparent;color:#C0392B;border:1.5px solid #E57373;padding:0.45rem 1rem;font-size:0.85rem" onclick="deleteActivity('${a.id}','${escHtml(a.title)}')">削除</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+}
+
+let editActivityId = null;
+function openEditActivity(id, title, date) {
+  editActivityId = id;
+  document.getElementById('edit-activity-title').value = title;
+  document.getElementById('edit-activity-date').value = date;
+  document.getElementById('edit-activity-error').classList.remove('show');
+  openModal('modal-edit-activity');
+}
+
+async function saveEditActivity() {
+  const title = document.getElementById('edit-activity-title').value.trim();
+  const date = document.getElementById('edit-activity-date').value;
+  const err = document.getElementById('edit-activity-error');
+  err.classList.remove('show');
+  if (!title || !date) { err.textContent = '活動名と日付を入力してください'; err.classList.add('show'); return; }
+  const { error } = await sb.from('activities').update({ title, activity_date: date }).eq('id', editActivityId);
+  if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
+  closeModal('modal-edit-activity');
+  showToast('活動を更新しました');
+  loadAdminEvents();
+  loadActivities();
+}
+
+async function closeActivity(id) {
+  if (!confirm('この活動を終了状態にしますか？終了すると一覧から非表示になります。')) return;
+  const { error } = await sb.from('activities').update({ status: 'closed' }).eq('id', id);
+  if (error) { showToast('エラー: ' + error.message); return; }
+  showToast('活動を終了しました');
+  loadAdminEvents();
+  loadActivities();
+}
+
+async function deleteActivity(id, title) {
+  if (!confirm(`「${title}」を削除しますか？関連するチェックイン・カードも削除されます。この操作は取り消せません。`)) return;
+  await sb.from('cards').delete().eq('activity_id', id);
+  await sb.from('checkins').delete().eq('activity_id', id);
+  const { error } = await sb.from('activities').delete().eq('id', id);
+  if (error) { showToast('エラー: ' + error.message); return; }
+  showToast('活動を削除しました');
+  loadAdminEvents();
+  loadActivities();
+}
+
+// ===== ADMIN: 個別カード送信 =====
+async function loadAdminCardSend() {
+  const container = document.getElementById('admin-content');
+  container.innerHTML = '<div style="color:var(--text-light);font-size:0.9rem;padding:1rem 0">読み込み中...</div>';
+  const { data: profiles } = await sb.from('profiles').select('id, nickname, grade, grades, school').neq('id', currentUser.id).order('nickname');
+  if (!profiles || profiles.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">送信可能なユーザーがいません</div></div>';
+    return;
+  }
+  container.innerHTML = `
+    <div class="section-title" style="margin-bottom:0.8rem">個別カード送信</div>
+    <div style="font-size:0.82rem;color:var(--text-light);margin-bottom:0.8rem">頑張った保護者に個別でカードを送れます</div>
+    ${profiles.map(p => {
+      const grades = (p.grades && p.grades.length > 0) ? p.grades.join('・') : (p.grade || '');
+      return `
+        <div class="participant-item">
+          <div class="participant-info">
+            <div class="card-avatar">${p.nickname.charAt(0)}</div>
+            <div>
+              <div class="participant-name">${escHtml(p.nickname)}</div>
+              <div style="font-size:0.75rem;color:var(--text-light)">${escHtml(grades)}${p.school ? ' · ' + escHtml(p.school) : ''}</div>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-terracotta" onclick="openSendCardToUserDirect('${p.id}','${escHtml(p.nickname)}')">カード送信</button>
+        </div>
+      `;
+    }).join('')}
+  `;
+}
+
+function openSendCardToUserDirect(toUserId, toName) {
+  // 活動なしの直接送信
+  selectedToUserId = toUserId;
+  selectedActivityId = null;
+  document.getElementById('card-modal-sub').textContent = `${toName}さんへ（PTAより・活動指定なし）`;
+  document.getElementById('card-message').value = '';
+  document.getElementById('card-error').classList.remove('show');
+  selectTemplate(1);
+  openModal('modal-card');
+}
+
 // ===== ADMIN: 36時間アラート =====
 async function loadAdminAlerts() {
   const container = document.getElementById('admin-content');
@@ -1651,6 +1865,147 @@ async function loadAdminParticipants() {
       <div style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.6rem">${dateStr} · ${(checkins||[]).length}名参加</div>`;
     if (checkins && checkins.length > 0) {
       html += checkins.map(c => c.profiles ? `<div style="display:flex;align-items:center;gap:0.6rem;padding:0.4rem 0;border-bottom:1px solid var(--border)"><div class="card-avatar" style="width:28px;height:28px;font-size:0.75rem">${c.profiles.nickname.charAt(0)}</div><span style="font-size:0.88rem">${escHtml(c.profiles.nickname)}</span><span class="grade-badge">${escHtml(c.profiles.grade)}</span></div>` : '').join('');
+    } else {
+      html += '<div style="font-size:0.85rem;color:var(--text-light)">参加者なし</div>';
+    }
+    html += '</div>';
+  }
+  container.innerHTML = html;
+}
+
+// ===== ADMIN: ダッシュボード =====
+async function loadAdminDashboard() {
+  const container = document.getElementById('admin-content');
+  container.innerHTML = '<div style="color:var(--text-light);font-size:0.9rem;padding:1rem 0">読み込み中...</div>';
+
+  const [{ count: userCount }, { count: activityCount }, { count: checkinCount }, { count: cardCount }, { data: activities }, { data: checkins }, { data: cards }] = await Promise.all([
+    sb.from('profiles').select('*', { count: 'exact', head: true }),
+    sb.from('activities').select('*', { count: 'exact', head: true }),
+    sb.from('checkins').select('*', { count: 'exact', head: true }),
+    sb.from('cards').select('*', { count: 'exact', head: true }),
+    sb.from('activities').select('id'),
+    sb.from('checkins').select('user_id, activity_id'),
+    sb.from('cards').select('to_user_id, activity_id')
+  ]);
+
+  // カード受信率（チェックインしてカードをもらった人の割合）
+  const checkinSet = new Set((checkins || []).map(c => `${c.user_id}_${c.activity_id}`));
+  const receivedSet = new Set((cards || []).map(c => `${c.to_user_id}_${c.activity_id}`));
+  let receivedCount = 0;
+  checkinSet.forEach(k => { if (receivedSet.has(k)) receivedCount++; });
+  const recvRate = checkinSet.size ? Math.round(receivedCount / checkinSet.size * 100) : 0;
+
+  const card = (label, value, color) => `
+    <div style="background:white;border-radius:14px;padding:1rem 1.2rem;border:1px solid var(--border)">
+      <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:0.3rem">${label}</div>
+      <div style="font-size:1.6rem;font-weight:700;color:${color}">${value}</div>
+    </div>`;
+
+  container.innerHTML = `
+    <div class="section-title" style="margin-bottom:0.8rem">全体ダッシュボード</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:1rem">
+      ${card('登録者数', userCount || 0, 'var(--sage-dark)')}
+      ${card('活動数', activityCount || 0, 'var(--brown)')}
+      ${card('延べ参加者数', checkinCount || 0, 'var(--sage-dark)')}
+      ${card('カード送信数', cardCount || 0, 'var(--terracotta)')}
+    </div>
+    ${card('カード受信率', recvRate + '%', 'var(--terracotta)')}
+    <div style="font-size:0.75rem;color:var(--text-light);margin-top:0.6rem;line-height:1.5">
+      ※ カード受信率 = チェックインした参加者のうち、同じ活動で最低1枚カードを受け取った人の割合
+    </div>`;
+}
+
+// ===== ADMIN: イベント管理（編集・終了）=====
+async function loadAdminEvents() {
+  const container = document.getElementById('admin-content');
+  container.innerHTML = '<div style="color:var(--text-light);font-size:0.9rem;padding:1rem 0">読み込み中...</div>';
+  const { data: activities } = await sb.from('activities').select('*').order('activity_date', { ascending: false });
+  if (!activities || activities.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🌱</div><div class="empty-text">活動がありません</div></div>';
+    return;
+  }
+  let html = '<div class="section-title" style="margin-bottom:0.8rem">イベント管理</div>';
+  html += activities.map(a => {
+    const dateStr = new Date(a.activity_date).toLocaleDateString('ja-JP', { year:'numeric', month:'short', day:'numeric' });
+    return `
+      <div style="background:white;border-radius:12px;padding:1rem;border:1px solid var(--border);margin-bottom:0.8rem">
+        <div style="font-weight:700;margin-bottom:0.2rem">${escHtml(a.title)}</div>
+        <div style="font-size:0.82rem;color:var(--text-light);margin-bottom:0.8rem">${dateStr}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-secondary" onclick="openEditEvent('${a.id}', '${escHtml(a.title)}', '${a.activity_date}')">編集</button>
+          <button class="btn btn-sm" style="background:transparent;color:#C0392B;border:1.5px solid #C0392B;font-size:0.82rem;padding:0.45rem 1rem" onclick="confirmDeleteEvent('${a.id}', '${escHtml(a.title)}')">削除</button>
+        </div>
+      </div>`;
+  }).join('');
+  container.innerHTML = html;
+}
+
+function openEditEvent(id, title, date) {
+  selectedActivityId = id;
+  document.getElementById('edit-event-title').value = title;
+  document.getElementById('edit-event-date').value = date;
+  document.getElementById('edit-event-error').classList.remove('show');
+  openModal('modal-edit-event');
+}
+
+async function saveEditEvent() {
+  const title = document.getElementById('edit-event-title').value.trim();
+  const date = document.getElementById('edit-event-date').value;
+  const err = document.getElementById('edit-event-error');
+  err.classList.remove('show');
+  if (!title || !date) { err.textContent = '活動名と日付を入力してください'; err.classList.add('show'); return; }
+  const { error } = await sb.from('activities').update({ title, activity_date: date }).eq('id', selectedActivityId);
+  if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
+  closeModal('modal-edit-event');
+  showToast('活動を更新しました');
+  loadAdminEvents();
+  loadActivities();
+}
+
+async function confirmDeleteEvent(id, title) {
+  if (!confirm(`「${title}」を削除しますか？\n関連するチェックイン・カードも削除されます。`)) return;
+  // 関連データを先に削除
+  await sb.from('cards').delete().eq('activity_id', id);
+  await sb.from('checkins').delete().eq('activity_id', id);
+  const { error } = await sb.from('activities').delete().eq('id', id);
+  if (error) { showToast('削除エラー: ' + error.message); return; }
+  showToast('活動を削除しました');
+  loadAdminEvents();
+  loadActivities();
+}
+
+// ===== ADMIN: 個別カード送信 =====
+async function loadAdminCardSend() {
+  const container = document.getElementById('admin-content');
+  container.innerHTML = '<div style="color:var(--text-light);font-size:0.9rem;padding:1rem 0">読み込み中...</div>';
+
+  const { data: activities } = await sb.from('activities').select('*').order('activity_date', { ascending: false }).limit(10);
+  if (!activities || activities.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-text">活動がありません</div></div>';
+    return;
+  }
+
+  let html = `<div class="section-title" style="margin-bottom:0.8rem">個別カード送信</div>
+    <div style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem;line-height:1.6">活動の参加者を選んでPTAからカードを送ります</div>`;
+  for (const a of activities.slice(0, 5)) {
+    const { data: checkins } = await sb.from('checkins').select('user_id, profiles(id, nickname, grade)').eq('activity_id', a.id);
+    const participants = (checkins || []).filter(c => c.profiles);
+    const dateStr = new Date(a.activity_date).toLocaleDateString('ja-JP', { month:'short', day:'numeric' });
+    html += `<div style="background:white;border-radius:12px;padding:1rem;border:1px solid var(--border);margin-bottom:0.8rem">
+      <div style="font-weight:700;margin-bottom:0.2rem">${escHtml(a.title)}</div>
+      <div style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.6rem">${dateStr} · ${participants.length}名</div>`;
+    if (participants.length > 0) {
+      html += participants.map(c => `
+        <div class="participant-item">
+          <div class="participant-info">
+            <div class="card-avatar">${c.profiles.nickname.charAt(0)}</div>
+            <div>
+              <div class="participant-name">${escHtml(c.profiles.nickname)}</div>
+              <span class="grade-badge">${escHtml(c.profiles.grade)}</span>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-terracotta" onclick="openSendCard('${c.profiles.id}', '${escHtml(c.profiles.nickname)}', '${a.id}', '${escHtml(a.title)}')">カード送信</button>
+        </div>`).join('');
     } else {
       html += '<div style="font-size:0.85rem;color:var(--text-light)">参加者なし</div>';
     }
