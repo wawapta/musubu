@@ -853,6 +853,14 @@
           </div>
           <button class="btn btn-sm btn-secondary" onclick="openEditProfile()">プロフィールを編集</button>
         </div>
+
+        <div style="background:white;border-radius:16px;padding:1.2rem;border:1px solid var(--border);margin-bottom:0.8rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem">
+            <div style="font-size:0.9rem;font-weight:700;color:var(--text-mid)">お子さまの登録</div>
+            <button class="btn btn-sm btn-secondary" style="font-size:0.78rem;padding:0.35rem 0.8rem" onclick="openAddChild()">＋ 追加</button>
+          </div>
+          <div id="children-list" style="font-size:0.88rem"></div>
+        </div>
         <div style="background:white;border-radius:16px;padding:1.2rem;border:1px solid var(--border);margin-bottom:0.8rem">
           <div style="font-size:0.9rem;color:var(--text-mid);margin-bottom:0.3rem">参加した活動</div>
           <div style="font-size:1.8rem;font-weight:700;color:var(--sage-dark)" id="mypage-checkin-count">0</div>
@@ -890,6 +898,7 @@
             <button class="btn btn-sm btn-secondary" onclick="loadFederationUserManage()">管理者任命</button>
             <button class="btn btn-sm btn-secondary" onclick="loadFederationEvents()">小P連イベント</button>
             <button class="btn btn-sm btn-secondary" onclick="loadRolloverLogs()">年度更新ログ</button>
+            <button class="btn btn-sm btn-secondary" onclick="loadArchives()">年度別アーカイブ</button>
             <button class="btn btn-sm btn-secondary" onclick="exportFullBackup()">フルバックアップ</button>
           </div>
         </div>
@@ -1011,6 +1020,40 @@
     </div>
     <button class="btn btn-terracotta" style="margin-bottom:0.6rem" onclick="promptGoToSend()">カードを送る 💚</button>
     <button class="btn btn-secondary" onclick="closeModal('modal-prompt-card')">あとで</button>
+  </div>
+</div>
+
+<!-- ===== ADD CHILD MODAL ===== -->
+<div id="modal-add-child" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-add-child')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="child-modal-title">お子さまを追加</div>
+    <div class="modal-sub">お子さま情報を登録すると、より正確な活動管理ができます</div>
+    <div class="field">
+      <label>お子さまのニックネーム（任意）</label>
+      <input type="text" id="child-nickname" placeholder="例：たろう（実名でなくても構いません）">
+    </div>
+    <div class="field">
+      <label>通学校</label>
+      <select id="child-school">
+        <option value="">選択してください</option>
+        <optgroup label="練馬区立小学校">
+          <option>旭丘小学校</option><option>旭町小学校</option><option>大泉小学校</option><option>大泉学園小学校</option><option>大泉学園桜小学校</option><option>大泉学園緑小学校</option><option>大泉北小学校</option><option>大泉第一小学校</option><option>大泉第二小学校</option><option>大泉第三小学校</option><option>大泉第四小学校</option><option>大泉第六小学校</option><option>大泉西小学校</option><option>大泉東小学校</option><option>大泉南小学校</option><option>開進第一小学校</option><option>開進第二小学校</option><option>開進第三小学校</option><option>開進第四小学校</option><option>春日小学校</option><option>上石神井小学校</option><option>上石神井北小学校</option><option>北原小学校</option><option>北町小学校</option><option>北町西小学校</option><option>向山小学校</option><option>光和小学校</option><option>小竹小学校</option><option>下石神井小学校</option><option>石神井小学校</option><option>石神井台小学校</option><option>石神井西小学校</option><option>石神井東小学校</option><option>関町小学校</option><option>関町北小学校</option><option>泉新小学校</option><option>高松小学校</option><option>田柄小学校</option><option>田柄第二小学校</option><option>立野小学校</option><option>豊玉小学校</option><option>豊玉第二小学校</option><option>豊玉東小学校</option><option>豊玉南小学校</option><option>仲町小学校</option><option>中村小学校</option><option>中村西小学校</option><option>練馬小学校</option><option>練馬第二小学校</option><option>練馬第三小学校</option><option>練馬東小学校</option><option>橋戸小学校</option><option>早宮小学校</option><option>光が丘四季の香小学校</option><option>光が丘春の風小学校</option><option>光が丘夏の雲小学校</option><option>光が丘秋の陽小学校</option><option>光が丘第八小学校</option><option>富士見台小学校</option><option>豊溪小学校</option><option>南が丘小学校</option><option>南田中小学校</option><option>南町小学校</option><option>八坂小学校</option><option>谷原小学校</option>
+        </optgroup>
+        <optgroup label="国立・私立"><option>東京学芸大学附属大泉小学校</option><option>東京三育小学校</option></optgroup>
+        <optgroup label="その他"><option>区外の学校</option></optgroup>
+      </select>
+    </div>
+    <div class="field">
+      <label>学年</label>
+      <select id="child-grade">
+        <option value="">選択してください</option>
+        <option>1年生</option><option>2年生</option><option>3年生</option><option>4年生</option><option>5年生</option><option>6年生</option>
+        <option>卒業（OB・OG）</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" onclick="saveChild()">保存</button>
+    <div id="child-error" class="error-msg"></div>
   </div>
 </div>
 
@@ -1364,6 +1407,7 @@ function initMain() {
   loadActivities();
   loadCards();
   loadMyStats();
+  loadChildren();
 }
 
 function switchTab(tab, el) {
@@ -2491,6 +2535,172 @@ async function exportFullBackup() {
   a.click();
   URL.revokeObjectURL(url);
   showToast('バックアップをダウンロードしました');
+}
+
+// ===== CHILDREN MANAGEMENT =====
+let editingChildId = null;
+
+async function loadChildren() {
+  const { data: children } = await sb.from('user_children').select('*').eq('user_id', currentUser.id).order('created_at');
+  const container = document.getElementById('children-list');
+  if (!container) return;
+  if (!children || children.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-light);font-size:0.85rem;padding:0.4rem 0">まだ登録されていません</div>';
+    return;
+  }
+  container.innerHTML = children.map(c => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0;border-top:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:500">${escHtml(c.nickname || 'お子さま')}</div>
+        <div style="font-size:0.78rem;color:var(--text-light)">${escHtml(c.school || '')} · ${escHtml(c.grade || '')}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm btn-secondary" style="font-size:0.75rem;padding:0.3rem 0.6rem" onclick="openEditChild('${c.id}', '${escHtml(c.nickname || '')}', '${escHtml(c.school || '')}', '${escHtml(c.grade || '')}')">編集</button>
+        <button class="btn btn-sm" style="background:transparent;color:#C0392B;border:1px solid #E57373;font-size:0.75rem;padding:0.3rem 0.6rem" onclick="deleteChild('${c.id}', '${escHtml(c.nickname || 'お子さま')}')">削除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openAddChild() {
+  editingChildId = null;
+  document.getElementById('child-modal-title').textContent = 'お子さまを追加';
+  document.getElementById('child-nickname').value = '';
+  document.getElementById('child-school').value = currentProfile.school || '';
+  document.getElementById('child-grade').value = '';
+  document.getElementById('child-error').classList.remove('show');
+  openModal('modal-add-child');
+}
+
+function openEditChild(id, nickname, school, grade) {
+  editingChildId = id;
+  document.getElementById('child-modal-title').textContent = 'お子さま情報を編集';
+  document.getElementById('child-nickname').value = nickname;
+  document.getElementById('child-school').value = school;
+  document.getElementById('child-grade').value = grade;
+  document.getElementById('child-error').classList.remove('show');
+  openModal('modal-add-child');
+}
+
+async function saveChild() {
+  const nickname = document.getElementById('child-nickname').value.trim();
+  const school = document.getElementById('child-school').value;
+  const grade = document.getElementById('child-grade').value;
+  const err = document.getElementById('child-error');
+  err.classList.remove('show');
+  if (!school) { err.textContent = '学校を選択してください'; err.classList.add('show'); return; }
+  if (!grade) { err.textContent = '学年を選択してください'; err.classList.add('show'); return; }
+
+  if (editingChildId) {
+    const { error } = await sb.from('user_children').update({ nickname: nickname || null, school, grade }).eq('id', editingChildId);
+    if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
+    showToast('情報を更新しました');
+  } else {
+    const { error } = await sb.from('user_children').insert({ user_id: currentUser.id, nickname: nickname || null, school, grade });
+    if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
+    showToast('お子さまを登録しました');
+  }
+  closeModal('modal-add-child');
+  loadChildren();
+}
+
+async function deleteChild(id, nickname) {
+  if (!confirm(`「${nickname}」の情報を削除しますか？`)) return;
+  const { error } = await sb.from('user_children').delete().eq('id', id);
+  if (error) { showToast('エラー: ' + error.message); return; }
+  showToast('削除しました');
+  loadChildren();
+}
+
+// ===== FEDERATION: 年度別アーカイブ =====
+async function loadArchives() {
+  const container = document.getElementById('admin-content');
+  container.innerHTML = '<div style="color:var(--text-light);font-size:0.9rem;padding:1rem 0">読み込み中...</div>';
+
+  // archive_year毎に集計
+  const { data: activities } = await sb.from('activities').select('id, archive_year');
+  const { data: checkins } = await sb.from('checkins').select('id, archive_year');
+  const { data: cards } = await sb.from('cards').select('id, archive_year');
+
+  const byYear = {};
+  (activities || []).forEach(a => {
+    const y = a.archive_year || '現行';
+    byYear[y] = byYear[y] || { activities: 0, checkins: 0, cards: 0 };
+    byYear[y].activities++;
+  });
+  (checkins || []).forEach(c => {
+    const y = c.archive_year || '現行';
+    byYear[y] = byYear[y] || { activities: 0, checkins: 0, cards: 0 };
+    byYear[y].checkins++;
+  });
+  (cards || []).forEach(c => {
+    const y = c.archive_year || '現行';
+    byYear[y] = byYear[y] || { activities: 0, checkins: 0, cards: 0 };
+    byYear[y].cards++;
+  });
+
+  const years = Object.keys(byYear).sort((a, b) => a === '現行' ? -1 : b === '現行' ? 1 : b - a);
+
+  const currentFY = getCurrentFY();
+
+  let html = `<div class="section-title" style="margin-bottom:0.8rem">年度別アーカイブ</div>
+    <div style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem;line-height:1.6">
+      年度末に活動・カードデータをアーカイブし、年度別に保管します。<br>
+      現在年度：${currentFY}年度
+    </div>`;
+
+  html += years.map(y => {
+    const stats = byYear[y];
+    const isCurrent = y === '現行';
+    return `
+      <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:0.6rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
+          <div style="font-weight:700;font-size:1.05rem">${isCurrent ? '現行データ' : y + '年度'}</div>
+          ${isCurrent ? '<span style="font-size:0.7rem;background:var(--sage-light);color:var(--sage-dark);padding:0.15rem 0.5rem;border-radius:10px">アクティブ</span>' : '<span style="font-size:0.7rem;background:var(--cream);color:var(--text-light);padding:0.15rem 0.5rem;border-radius:10px">アーカイブ</span>'}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:0.82rem;color:var(--text-mid)">
+          <div>活動：<strong style="color:var(--text)">${stats.activities}</strong></div>
+          <div>参加：<strong style="color:var(--text)">${stats.checkins}</strong></div>
+          <div>カード：<strong style="color:var(--text)">${stats.cards}</strong></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  html += `<div style="background:#FBF5EA;border-radius:12px;padding:1rem;border:1px solid var(--terracotta-light);margin-top:1rem">
+    <div style="font-weight:700;color:#8A6020;margin-bottom:0.5rem;font-size:0.9rem">⚠ 現行データのアーカイブ</div>
+    <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:0.8rem;line-height:1.6">
+      現行の活動・参加・カードデータに ${currentFY}年度 のフラグを付与します。<br>
+      通常は年度末（3月31日）に実行します。
+    </div>
+    <button class="btn btn-sm" style="background:transparent;color:#8A6020;border:1.5px solid #C89A4A;padding:0.45rem 1rem;font-size:0.85rem" onclick="archiveCurrentYear(${currentFY})">${currentFY}年度としてアーカイブ</button>
+  </div>`;
+
+  container.innerHTML = html;
+}
+
+function getCurrentFY() {
+  const now = new Date();
+  // 日本の年度：4月から翌年3月
+  return now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+}
+
+async function archiveCurrentYear(year) {
+  if (!confirm(`現行の活動・参加・カードデータを ${year}年度 としてアーカイブします。\nよろしいですか？`)) return;
+  showToast('アーカイブ中...');
+
+  // archive_yearがnullの全データに年度を付与
+  const [ra, rc, rcd] = await Promise.all([
+    sb.from('activities').update({ archive_year: year }).is('archive_year', null),
+    sb.from('checkins').update({ archive_year: year }).is('archive_year', null),
+    sb.from('cards').update({ archive_year: year }).is('archive_year', null)
+  ]);
+
+  if (ra.error || rc.error || rcd.error) {
+    showToast('エラー: ' + (ra.error?.message || rc.error?.message || rcd.error?.message));
+    return;
+  }
+  showToast(`${year}年度としてアーカイブしました`);
+  loadArchives();
 }
 
 // ===== LOGOUT =====
