@@ -1,0 +1,26 @@
+{
+  "name": "Musubu",
+  "short_name": "Musubu",
+  "description": "はじめての一歩を、つなぐ - 練馬区小学校PTA連合協議会",
+  "start_url": "/musubu/",
+  "scope": "/musubu/",
+  "display": "standalone",
+  "background_color": "#F7F3EE",
+  "theme_color": "#4A6B4E",
+  "orientation": "portrait",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
