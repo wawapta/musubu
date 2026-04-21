@@ -874,6 +874,14 @@
           <div style="font-size:0.9rem;font-weight:700;color:var(--text-mid);margin-bottom:0.8rem">これまでつながった人</div>
           <div id="connections-list"></div>
         </div>
+
+        <div id="mypage-messages-box" style="display:none;background:white;border-radius:16px;padding:1.2rem;border:1px solid var(--border);margin-bottom:1.5rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.8rem">
+            <div style="font-size:0.9rem;font-weight:700;color:var(--text-mid)">小P連からの連絡</div>
+            <span id="mypage-messages-count" style="font-size:0.72rem;background:var(--sage-light);color:var(--sage-dark);padding:0.15rem 0.5rem;border-radius:10px"></span>
+          </div>
+          <div id="mypage-messages-list"></div>
+        </div>
         <button class="btn btn-secondary" style="margin-bottom:0.8rem" onclick="doLogout()">ログアウト</button>
         <button class="btn" style="background:transparent;color:#C0392B;border:1.5px solid #C0392B;font-size:0.85rem" onclick="confirmDeleteAccount()">退会・データ削除</button>
 
@@ -902,6 +910,7 @@
             <button class="btn btn-sm btn-secondary" onclick="loadFederationDashboard()">全校ダッシュボード</button>
             <button class="btn btn-sm btn-secondary" onclick="loadFederationUserManage()">管理者任命</button>
             <button class="btn btn-sm btn-secondary" onclick="loadFederationEvents()">小P連イベント</button>
+            <button class="btn btn-sm btn-secondary" onclick="loadFederationBroadcast()">各校管理者へ連絡</button>
             <button class="btn btn-sm btn-secondary" onclick="loadRolloverLogs()">年度更新ログ</button>
             <button class="btn btn-sm btn-secondary" onclick="loadArchives()">年度別アーカイブ</button>
             <button class="btn btn-sm btn-secondary" onclick="exportFullBackup()">フルバックアップ</button>
@@ -1025,6 +1034,34 @@
     </div>
     <button class="btn btn-terracotta" style="margin-bottom:0.6rem" onclick="promptGoToSend()">カードを送る 💚</button>
     <button class="btn btn-secondary" onclick="closeModal('modal-prompt-card')">あとで</button>
+  </div>
+</div>
+
+<!-- ===== BROADCAST MODAL ===== -->
+<div id="modal-broadcast" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-broadcast')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">各校管理者へ連絡</div>
+    <div class="modal-sub">PTA管理者全員のマイページに表示されます</div>
+    <div class="field">
+      <label>対象（任意）</label>
+      <select id="broadcast-target">
+        <option value="">全校PTA管理者</option>
+        <optgroup label="練馬区立小学校">
+          <option>旭丘小学校</option><option>旭町小学校</option><option>大泉小学校</option><option>大泉学園小学校</option><option>大泉学園桜小学校</option><option>大泉学園緑小学校</option><option>大泉北小学校</option><option>大泉第一小学校</option><option>大泉第二小学校</option><option>大泉第三小学校</option><option>大泉第四小学校</option><option>大泉第六小学校</option><option>大泉西小学校</option><option>大泉東小学校</option><option>大泉南小学校</option><option>開進第一小学校</option><option>開進第二小学校</option><option>開進第三小学校</option><option>開進第四小学校</option><option>春日小学校</option><option>上石神井小学校</option><option>上石神井北小学校</option><option>北原小学校</option><option>北町小学校</option><option>北町西小学校</option><option>向山小学校</option><option>光和小学校</option><option>小竹小学校</option><option>下石神井小学校</option><option>石神井小学校</option><option>石神井台小学校</option><option>石神井西小学校</option><option>石神井東小学校</option><option>関町小学校</option><option>関町北小学校</option><option>泉新小学校</option><option>高松小学校</option><option>田柄小学校</option><option>田柄第二小学校</option><option>立野小学校</option><option>豊玉小学校</option><option>豊玉第二小学校</option><option>豊玉東小学校</option><option>豊玉南小学校</option><option>仲町小学校</option><option>中村小学校</option><option>中村西小学校</option><option>練馬小学校</option><option>練馬第二小学校</option><option>練馬第三小学校</option><option>練馬東小学校</option><option>橋戸小学校</option><option>早宮小学校</option><option>光が丘四季の香小学校</option><option>光が丘春の風小学校</option><option>光が丘夏の雲小学校</option><option>光が丘秋の陽小学校</option><option>光が丘第八小学校</option><option>富士見台小学校</option><option>豊溪小学校</option><option>南が丘小学校</option><option>南田中小学校</option><option>南町小学校</option><option>八坂小学校</option><option>谷原小学校</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="field">
+      <label>件名</label>
+      <input type="text" id="broadcast-subject" placeholder="例：小P連総会のご案内">
+    </div>
+    <div class="field">
+      <label>本文</label>
+      <textarea id="broadcast-body" rows="6" placeholder="本文を入力..." style="resize:vertical"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="sendBroadcast()">送信する</button>
+    <div id="broadcast-error" class="error-msg"></div>
   </div>
 </div>
 
@@ -1425,6 +1462,8 @@ function initMain() {
     document.getElementById('pta-create-btn').style.display = '';
     document.getElementById('mypage-admin').style.display = '';
     document.getElementById('nav-admin').style.display = '';
+    document.getElementById('mypage-messages-box').style.display = '';
+    loadAdminMessages();
   }
   if (currentProfile.is_federation_admin) {
     document.getElementById('federation-buttons').style.display = '';
@@ -2918,6 +2957,108 @@ async function archiveCurrentYear(year) {
   }
   showToast(`${year}年度としてアーカイブしました`);
   loadArchives();
+}
+
+// ===== FEDERATION: 各校管理者へ連絡 =====
+async function loadFederationBroadcast() {
+  const container = document.getElementById('admin-content');
+  const { data: messages } = await sb.from('federation_messages').select('*').order('created_at', { ascending: false }).limit(20);
+
+  // 送信者プロフィールを取得
+  const senderIds = [...new Set((messages || []).map(m => m.sent_by))];
+  const { data: senders } = senderIds.length ? await sb.from('profiles').select('id, nickname').in('id', senderIds) : { data: [] };
+  const senderMap = {};
+  (senders || []).forEach(s => { senderMap[s.id] = s.nickname; });
+
+  let html = `<div class="section-title" style="margin-bottom:0.8rem">各校管理者へ連絡</div>
+    <div style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem;line-height:1.6">
+      小P連管理者から各校PTA管理者全員へ連絡を送れます。受信者のマイページに表示されます。
+    </div>
+    <button class="btn btn-terracotta" style="margin-bottom:1.5rem" onclick="openSendBroadcast()">＋ 新規連絡を送る</button>`;
+
+  html += `<div style="font-size:0.88rem;font-weight:700;margin-bottom:0.6rem;color:var(--text-mid)">送信履歴</div>`;
+  if (!messages || messages.length === 0) {
+    html += '<div class="empty-state" style="padding:1.5rem"><div class="empty-text">まだ送信履歴がありません</div></div>';
+  } else {
+    html += messages.map(m => {
+      const dateStr = new Date(m.created_at).toLocaleString('ja-JP', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      return `
+        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:0.6rem">
+          <div style="display:flex;justify-content:space-between;align-items:start;gap:0.5rem;margin-bottom:0.4rem">
+            <div style="font-weight:700;flex:1">${escHtml(m.subject)}</div>
+            <div style="font-size:0.76rem;color:var(--text-light);white-space:nowrap">${dateStr}</div>
+          </div>
+          <div style="font-size:0.85rem;color:var(--text-mid);line-height:1.6;margin-bottom:0.6rem;white-space:pre-wrap">${escHtml(m.body)}</div>
+          <div style="font-size:0.72rem;color:var(--text-light)">送信者：${escHtml(senderMap[m.sent_by] || '?')} · 対象：${m.target_school || '全校PTA管理者'}</div>
+        </div>`;
+    }).join('');
+  }
+  container.innerHTML = html;
+}
+
+function openSendBroadcast() {
+  document.getElementById('broadcast-subject').value = '';
+  document.getElementById('broadcast-body').value = '';
+  document.getElementById('broadcast-target').value = '';
+  document.getElementById('broadcast-error').classList.remove('show');
+  openModal('modal-broadcast');
+}
+
+async function sendBroadcast() {
+  const subject = document.getElementById('broadcast-subject').value.trim();
+  const body = document.getElementById('broadcast-body').value.trim();
+  const target = document.getElementById('broadcast-target').value || null;
+  const err = document.getElementById('broadcast-error');
+  err.classList.remove('show');
+  if (!subject || !body) { err.textContent = '件名と本文を入力してください'; err.classList.add('show'); return; }
+
+  const { error } = await sb.from('federation_messages').insert({
+    sent_by: currentUser.id, subject, body, target_school: target
+  });
+  if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
+
+  closeModal('modal-broadcast');
+  showToast('連絡を送信しました');
+  loadFederationBroadcast();
+}
+
+// ===== PTA管理者：受信メッセージ読込 =====
+async function loadAdminMessages() {
+  const { data: messages } = await sb.from('federation_messages').select('*').order('created_at', { ascending: false }).limit(10);
+
+  // 自校宛または全校宛のみ絞り込み
+  const relevant = (messages || []).filter(m => !m.target_school || m.target_school === currentProfile.school);
+
+  const list = document.getElementById('mypage-messages-list');
+  const count = document.getElementById('mypage-messages-count');
+  if (!list) return;
+
+  if (relevant.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-light);font-size:0.85rem;padding:0.4rem 0">まだ連絡はありません</div>';
+    count.textContent = '0件';
+    return;
+  }
+
+  count.textContent = `${relevant.length}件`;
+
+  // 送信者名取得
+  const senderIds = [...new Set(relevant.map(m => m.sent_by))];
+  const { data: senders } = await sb.from('profiles').select('id, nickname').in('id', senderIds);
+  const senderMap = {};
+  (senders || []).forEach(s => { senderMap[s.id] = s.nickname; });
+
+  list.innerHTML = relevant.map((m, i) => {
+    const dateStr = new Date(m.created_at).toLocaleString('ja-JP', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    return `
+      <div style="${i > 0 ? 'border-top:1px solid var(--border);margin-top:0.6rem;padding-top:0.6rem' : ''}">
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:0.5rem;margin-bottom:0.3rem">
+          <div style="font-weight:700;font-size:0.92rem;flex:1">${escHtml(m.subject)}</div>
+          <div style="font-size:0.72rem;color:var(--text-light);white-space:nowrap">${dateStr}</div>
+        </div>
+        <div style="font-size:0.85rem;color:var(--text-mid);line-height:1.6;white-space:pre-wrap;margin-bottom:0.3rem">${escHtml(m.body)}</div>
+        <div style="font-size:0.7rem;color:var(--text-light)">From: ${escHtml(senderMap[m.sent_by] || '?')}</div>
+      </div>`;
+  }).join('');
 }
 
 // ===== LOGOUT =====
