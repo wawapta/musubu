@@ -869,6 +869,11 @@
           <div style="font-size:0.9rem;color:var(--text-mid);margin-bottom:0.3rem">受け取ったカード</div>
           <div style="font-size:1.8rem;font-weight:700;color:var(--terracotta)" id="mypage-card-count">0</div>
         </div>
+
+        <div style="background:white;border-radius:16px;padding:1.2rem;border:1px solid var(--border);margin-bottom:1.5rem">
+          <div style="font-size:0.9rem;font-weight:700;color:var(--text-mid);margin-bottom:0.8rem">これまでつながった人</div>
+          <div id="connections-list"></div>
+        </div>
         <button class="btn btn-secondary" style="margin-bottom:0.8rem" onclick="doLogout()">ログアウト</button>
         <button class="btn" style="background:transparent;color:#C0392B;border:1.5px solid #C0392B;font-size:0.85rem" onclick="confirmDeleteAccount()">退会・データ削除</button>
 
@@ -1429,6 +1434,68 @@ function initMain() {
   loadCards();
   loadMyStats();
   loadChildren();
+  loadConnections();
+}
+
+// ===== CONNECTIONS: これまでつながった人 =====
+async function loadConnections() {
+  // 自分がやり取りしたカードを取得して相手を集計
+  const { data: sentCards } = await sb.from('cards').select('to_user_id, created_at').eq('from_user_id', currentUser.id).eq('is_from_pta', false);
+  const { data: receivedCards } = await sb.from('cards').select('from_user_id, created_at').eq('to_user_id', currentUser.id).eq('is_from_pta', false);
+
+  const userStats = {};
+  (sentCards || []).forEach(c => {
+    if (c.to_user_id === currentUser.id) return;
+    userStats[c.to_user_id] = userStats[c.to_user_id] || { sent: 0, received: 0, last: c.created_at };
+    userStats[c.to_user_id].sent++;
+    if (c.created_at > userStats[c.to_user_id].last) userStats[c.to_user_id].last = c.created_at;
+  });
+  (receivedCards || []).forEach(c => {
+    if (c.from_user_id === currentUser.id) return;
+    userStats[c.from_user_id] = userStats[c.from_user_id] || { sent: 0, received: 0, last: c.created_at };
+    userStats[c.from_user_id].received++;
+    if (c.created_at > userStats[c.from_user_id].last) userStats[c.from_user_id].last = c.created_at;
+  });
+
+  const userIds = Object.keys(userStats);
+  const container = document.getElementById('connections-list');
+  if (!container) return;
+
+  if (userIds.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-light);font-size:0.85rem;padding:0.4rem 0">まだつながりがありません</div>';
+    return;
+  }
+
+  // 相手のプロフィール取得
+  const { data: profiles } = await sb.from('profiles').select('id, nickname, grade, school').in('id', userIds);
+  const profMap = {};
+  (profiles || []).forEach(p => { profMap[p.id] = p; });
+
+  // 最終交換日でソート
+  const sorted = userIds.sort((a, b) => new Date(userStats[b].last) - new Date(userStats[a].last));
+
+  container.innerHTML = `
+    <div style="font-size:0.76rem;color:var(--text-light);margin-bottom:0.8rem">カードを交換した方（${sorted.length}人）</div>
+    ${sorted.map(uid => {
+      const p = profMap[uid];
+      if (!p) return '';
+      const s = userStats[uid];
+      const total = s.sent + s.received;
+      const daysSince = Math.floor((Date.now() - new Date(s.last).getTime()) / (1000 * 60 * 60 * 24));
+      const timeLabel = daysSince === 0 ? '今日' : daysSince === 1 ? '昨日' : daysSince < 7 ? `${daysSince}日前` : daysSince < 30 ? `${Math.floor(daysSince/7)}週間前` : `${Math.floor(daysSince/30)}ヶ月前`;
+      return `
+        <div style="display:flex;align-items:center;gap:0.7rem;padding:0.6rem 0;border-top:1px solid var(--border)">
+          <div class="card-avatar">${p.nickname.charAt(0)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:500;font-size:0.92rem">${escHtml(p.nickname)}</div>
+            <div style="font-size:0.76rem;color:var(--text-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.school || '')} · ${timeLabel}</div>
+          </div>
+          <div style="display:flex;gap:4px;font-size:0.72rem">
+            ${s.sent > 0 ? `<span style="background:var(--sage-light);color:var(--sage-dark);padding:0.15rem 0.5rem;border-radius:10px">送 ${s.sent}</span>` : ''}
+            ${s.received > 0 ? `<span style="background:var(--terracotta-light);color:var(--terracotta);padding:0.15rem 0.5rem;border-radius:10px">受 ${s.received}</span>` : ''}
+          </div>
+        </div>`;
+    }).join('')}`;
 }
 
 function switchTab(tab, el) {
@@ -1478,38 +1545,80 @@ async function loadActivities() {
     return;
   }
 
-  container.innerHTML = visible.map(a => {
-    const isChecked = checkedIds.has(a.id);
+  // 「今日の活動」を分離
+  const todayActivities = visible.filter(a => {
     const actDate = new Date(a.activity_date);
     const dayEnd = new Date(actDate); dayEnd.setHours(23, 59, 59, 999);
-    const isToday = now <= dayEnd;
-    const isWithin48h = !isToday && now <= new Date(dayEnd.getTime() + 48 * 60 * 60 * 1000);
-    const dateStr = actDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+    return now <= dayEnd && actDate.toDateString() === now.toDateString();
+  });
 
-    let statusBadge = '';
-    if (isToday) {
-      statusBadge = '<span style="font-size:0.72rem;background:#EEF5F0;color:#4A6B4E;padding:0.15rem 0.6rem;border-radius:20px;font-weight:500">開催中</span>';
-    } else if (isWithin48h) {
-      statusBadge = '<span style="font-size:0.72rem;background:#FBF5EA;color:#8A6020;padding:0.15rem 0.6rem;border-radius:20px;font-weight:500">カード送信のみ可</span>';
+  let html = '';
+
+  // 今日の活動ハイライト
+  if (todayActivities.length > 0 && activityFilter === 'all') {
+    html += `<div style="background:linear-gradient(135deg,#EEF5F0 0%,#FBF5EA 100%);border-radius:16px;padding:1rem 1.2rem;margin-bottom:1.2rem;border:1.5px solid var(--sage-light)">
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.7rem">
+        <span style="font-size:1.1rem">☀️</span>
+        <div style="font-size:0.88rem;font-weight:700;color:var(--sage-dark);letter-spacing:0.05em">今日の活動</div>
+      </div>`;
+    html += todayActivities.map(a => {
+      const isChecked = checkedIds.has(a.id);
+      const dateStr = new Date(a.activity_date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+      return `
+        <div onclick="openActivity('${a.id}', '${escHtml(a.title)}', '${dateStr}', ${isChecked}, true, false)" style="background:white;border-radius:12px;padding:0.9rem 1rem;margin-bottom:0.5rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:0.6rem;transition:transform 0.1s" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform=''">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:0.95rem;margin-bottom:0.2rem">
+              ${a.is_federation_event ? '<span style="font-size:0.65rem;background:var(--sage-light);color:var(--sage-dark);padding:0.1rem 0.4rem;border-radius:8px;font-weight:500;margin-right:0.3rem;vertical-align:middle">小P連</span>' : ''}
+              ${escHtml(a.title)}
+            </div>
+            ${isChecked ? '<span class="checked-badge" style="font-size:0.72rem">✓ 参加済み</span>' : '<span style="font-size:0.76rem;color:var(--terracotta);font-weight:500">▶ タップして参加記録</span>'}
+          </div>
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="var(--text-light)" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </div>`;
+    }).join('');
+    html += '</div>';
+  }
+
+  // それ以外の活動一覧
+  const otherActivities = activityFilter === 'all' ? visible.filter(a => !todayActivities.some(t => t.id === a.id)) : visible;
+  if (otherActivities.length > 0) {
+    if (todayActivities.length > 0 && activityFilter === 'all') {
+      html += '<div style="font-size:0.82rem;color:var(--text-light);margin-bottom:0.6rem;padding-left:0.2rem">その他の活動</div>';
     }
+    html += otherActivities.map(a => {
+      const isChecked = checkedIds.has(a.id);
+      const actDate = new Date(a.activity_date);
+      const dayEnd = new Date(actDate); dayEnd.setHours(23, 59, 59, 999);
+      const isToday = now <= dayEnd && actDate.toDateString() === now.toDateString();
+      const isWithin48h = !isToday && now <= new Date(dayEnd.getTime() + 48 * 60 * 60 * 1000);
+      const dateStr = actDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    return `
-      <div class="activity-card" onclick="openActivity('${a.id}', '${escHtml(a.title)}', '${dateStr}', ${isChecked}, ${isToday}, ${isWithin48h})">
-        <div class="activity-card-title">
-          ${a.is_federation_event ? '<span style="font-size:0.68rem;background:var(--sage-light);color:var(--sage-dark);padding:0.12rem 0.5rem;border-radius:10px;font-weight:500;margin-right:0.4rem;vertical-align:middle">小P連</span>' : ''}
-          ${escHtml(a.title)}
+      let statusBadge = '';
+      if (isToday) {
+        statusBadge = '<span style="font-size:0.72rem;background:#EEF5F0;color:#4A6B4E;padding:0.15rem 0.6rem;border-radius:20px;font-weight:500">開催中</span>';
+      } else if (isWithin48h) {
+        statusBadge = '<span style="font-size:0.72rem;background:#FBF5EA;color:#8A6020;padding:0.15rem 0.6rem;border-radius:20px;font-weight:500">カード送信のみ可</span>';
+      }
+
+      return `
+        <div class="activity-card" onclick="openActivity('${a.id}', '${escHtml(a.title)}', '${dateStr}', ${isChecked}, ${isToday}, ${isWithin48h})">
+          <div class="activity-card-title">
+            ${a.is_federation_event ? '<span style="font-size:0.68rem;background:var(--sage-light);color:var(--sage-dark);padding:0.12rem 0.5rem;border-radius:10px;font-weight:500;margin-right:0.4rem;vertical-align:middle">小P連</span>' : ''}
+            ${escHtml(a.title)}
+          </div>
+          <div class="activity-card-date">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            ${dateStr}
+          </div>
+          <div class="activity-card-footer">
+            ${statusBadge}
+            ${isChecked ? '<span class="checked-badge">✓ 参加済み</span>' : '<span style="font-size:0.82rem;color:var(--text-light)">タップで詳細</span>'}
+          </div>
         </div>
-        <div class="activity-card-date">
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-          ${dateStr}
-        </div>
-        <div class="activity-card-footer">
-          ${statusBadge}
-          ${isChecked ? '<span class="checked-badge">✓ 参加済み</span>' : '<span style="font-size:0.82rem;color:var(--text-light)">タップで詳細</span>'}
-        </div>
-      </div>
-    `;
-  }).join('');
+      `;
+    }).join('');
+  }
+  container.innerHTML = html;
 }
 
 async function openActivity(id, title, dateStr, isChecked, isToday, isWithin48h) {
