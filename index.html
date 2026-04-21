@@ -1203,6 +1203,14 @@
       <label>ひとこと（任意・100文字以内）</label>
       <textarea id="card-message" placeholder="ありがとうございました！" maxlength="100"></textarea>
     </div>
+    <div class="field">
+      <label>写真を添付（任意・最大5MB）</label>
+      <input type="file" id="card-image" accept="image/*" style="font-size:0.85rem">
+      <div id="card-image-preview" style="display:none;margin-top:0.6rem;position:relative">
+        <img id="card-image-preview-img" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;border:1px solid var(--border)">
+        <button type="button" onclick="clearCardImage()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);color:white;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:1rem">×</button>
+      </div>
+    </div>
     <button class="btn btn-terracotta" onclick="sendCard()">送る 🌿</button>
     <div id="card-error" class="error-msg"></div>
   </div>
@@ -1238,6 +1246,19 @@
     <div class="field">
       <label>日付</label>
       <input type="date" id="create-date">
+    </div>
+    <div class="field">
+      <label>活動画像（任意・最大5MB）</label>
+      <input type="file" id="activity-image" accept="image/*" style="font-size:0.85rem">
+      <div id="activity-image-preview" style="display:none;margin-top:0.6rem;position:relative">
+        <img id="activity-image-preview-img" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;border:1px solid var(--border)">
+        <button type="button" onclick="clearActivityImage()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);color:white;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:1rem">×</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>チラシ（任意・PDF/JPEG/PNG・最大10MB）</label>
+      <input type="file" id="activity-flyer" accept="application/pdf,image/jpeg,image/png" style="font-size:0.85rem">
+      <div id="activity-flyer-label" style="margin-top:0.3rem;font-size:0.8rem;color:var(--text-light)"></div>
     </div>
     <button class="btn btn-primary" onclick="createActivity()">追加する</button>
     <div id="create-error" class="error-msg"></div>
@@ -1493,7 +1514,10 @@ async function loadActivities() {
 
 async function openActivity(id, title, dateStr, isChecked, isToday, isWithin48h) {
   selectedActivityId = id;
-  const { data: checkins } = await sb.from('checkins').select('user_id, profiles(id, nickname, grade)').eq('activity_id', id);
+  const [{ data: checkins }, { data: activity }] = await Promise.all([
+    sb.from('checkins').select('user_id, profiles(id, nickname, grade)').eq('activity_id', id),
+    sb.from('activities').select('image_url, flyer_url').eq('id', id).single()
+  ]);
   const participants = (checkins || []).map(c => c.profiles).filter(Boolean);
   const myParticipants = participants.filter(p => p.id !== currentUser.id);
 
@@ -1501,6 +1525,21 @@ async function openActivity(id, title, dateStr, isChecked, isToday, isWithin48h)
     <div class="modal-title">${escHtml(title)}</div>
     <div class="modal-sub">${dateStr}</div>
   `;
+
+  // 活動画像
+  if (activity?.image_url) {
+    html += `<img src="${escHtml(activity.image_url)}" style="width:100%;border-radius:12px;margin-bottom:1rem;max-height:200px;object-fit:cover">`;
+  }
+
+  // チラシリンク
+  if (activity?.flyer_url) {
+    const isImg = /\.(jpe?g|png)$/i.test(activity.flyer_url);
+    html += `<a href="${escHtml(activity.flyer_url)}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:0.6rem;background:var(--cream);border-radius:10px;padding:0.8rem 1rem;margin-bottom:1rem;text-decoration:none;color:var(--text)">
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <div style="flex:1"><div style="font-weight:500;font-size:0.9rem">チラシを見る</div><div style="font-size:0.75rem;color:var(--text-light)">${isImg ? '画像' : 'PDF'}</div></div>
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+    </a>`;
+  }
 
   if (isWithin48h && !isToday) {
     html += `<div style="background:#FBF5EA;border-radius:10px;padding:0.7rem 1rem;margin-bottom:1.2rem;font-size:0.85rem;color:#8A6020">終了済み・カード送信のみ可（48時間以内）</div>`;
@@ -1644,22 +1683,35 @@ async function sendCard() {
     err.textContent = 'ひとことは100文字以内にしてください'; err.classList.add('show'); return;
   }
 
+  // 画像をアップロード（あれば）
+  let imageUrl = null;
+  const imageFile = document.getElementById('card-image').files[0];
+  if (imageFile) {
+    if (imageFile.size > 5 * 1024 * 1024) {
+      err.textContent = '画像は5MB以下にしてください'; err.classList.add('show'); return;
+    }
+    const ext = imageFile.name.split('.').pop().toLowerCase();
+    const filePath = `${currentUser.id}/${Date.now()}.${ext}`;
+    const { error: upErr } = await sb.storage.from('card-images').upload(filePath, imageFile);
+    if (upErr) { err.textContent = '画像アップロード失敗: ' + upErr.message; err.classList.add('show'); return; }
+    const { data: urlData } = sb.storage.from('card-images').getPublicUrl(filePath);
+    imageUrl = urlData.publicUrl;
+  }
+
   let insertedCardIds = [];
 
   if (selectedToUserId === 'ALL') {
     const { data: checkins } = await sb.from('checkins').select('user_id').eq('activity_id', selectedActivityId).neq('user_id', currentUser.id);
     if (!checkins || checkins.length === 0) { err.textContent = '送る相手がいません'; err.classList.add('show'); return; }
-    // 既に送信済みの相手を除外
     const { data: existing } = await sb.from('cards').select('to_user_id').eq('activity_id', selectedActivityId).eq('from_user_id', currentUser.id);
     const sentSet = new Set((existing || []).map(c => c.to_user_id));
     const targets = checkins.filter(c => !sentSet.has(c.user_id));
     if (targets.length === 0) { err.textContent = 'すでに全員に送信済みです'; err.classList.add('show'); return; }
-    const inserts = targets.map(c => ({ from_user_id: currentUser.id, to_user_id: c.user_id, activity_id: selectedActivityId, message, template_id: selectedTemplateId, is_from_pta: true }));
+    const inserts = targets.map(c => ({ from_user_id: currentUser.id, to_user_id: c.user_id, activity_id: selectedActivityId, message, template_id: selectedTemplateId, is_from_pta: true, image_url: imageUrl }));
     const { data, error } = await sb.from('cards').insert(inserts).select('id');
     if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
     insertedCardIds = (data || []).map(d => d.id);
   } else {
-    // 1活動1人1回の重複チェック
     if (selectedActivityId) {
       const { count: existCount } = await sb.from('cards').select('*', { count: 'exact', head: true })
         .eq('activity_id', selectedActivityId).eq('from_user_id', currentUser.id).eq('to_user_id', selectedToUserId);
@@ -1667,7 +1719,7 @@ async function sendCard() {
         err.textContent = 'この方にはすでにカードを送っています'; err.classList.add('show'); return;
       }
     }
-    const row = { from_user_id: currentUser.id, to_user_id: selectedToUserId, message, template_id: selectedTemplateId, is_from_pta: currentProfile.is_pta_admin };
+    const row = { from_user_id: currentUser.id, to_user_id: selectedToUserId, message, template_id: selectedTemplateId, is_from_pta: currentProfile.is_pta_admin, image_url: imageUrl };
     if (selectedActivityId) row.activity_id = selectedActivityId;
     const { data, error } = await sb.from('cards').insert(row).select('id').single();
     if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
@@ -1675,12 +1727,20 @@ async function sendCard() {
   }
 
   closeModal('modal-card');
+  clearCardImage();
   showToast('カードを送りました 💚');
   loadCards();
 
   for (const cardId of insertedCardIds) {
     sb.functions.invoke('send-card-notification', { body: { cardId } }).catch(e => console.warn('Notification failed:', e));
   }
+}
+
+function clearCardImage() {
+  const input = document.getElementById('card-image');
+  if (input) input.value = '';
+  const preview = document.getElementById('card-image-preview');
+  if (preview) preview.style.display = 'none';
 }
 
 // ===== CARD TAB SWITCH =====
@@ -1757,6 +1817,7 @@ function renderReceivedCard(c) {
         ${c.is_from_pta ? '<div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;opacity:0.6;margin-bottom:0.4rem">PTA より</div>' : ''}
         <div class="received-card-tpl-title">${escHtml(tpl.title)}</div>
         ${c.message ? `<div style="font-size:0.9rem;line-height:1.6;margin-top:0.4rem;opacity:0.8">${escHtml(c.message)}</div>` : ''}
+        ${c.image_url ? `<img src="${escHtml(c.image_url)}" style="width:100%;border-radius:10px;margin-top:0.8rem;cursor:pointer" onclick="window.open('${escHtml(c.image_url)}','_blank')">` : ''}
       </div>
       <div class="card-header" style="margin-top:0.6rem;margin-bottom:0">
         <div class="card-avatar ${c.is_from_pta ? 'pta' : ''}">${fromName.charAt(0)}</div>
@@ -1824,11 +1885,58 @@ async function createActivity() {
   const err = document.getElementById('create-error');
   err.classList.remove('show');
   if (!title || !date) { err.textContent = '活動名と日付を入力してください'; err.classList.add('show'); return; }
-  const { error } = await sb.from('activities').insert({ title, activity_date: date, created_by: currentUser.id });
+
+  showToast('作成中...');
+
+  // 活動画像アップロード
+  let imageUrl = null;
+  const imageFile = document.getElementById('activity-image').files[0];
+  if (imageFile) {
+    if (imageFile.size > 5 * 1024 * 1024) {
+      err.textContent = '画像は5MB以下にしてください'; err.classList.add('show'); return;
+    }
+    const ext = imageFile.name.split('.').pop().toLowerCase();
+    const filePath = `${currentUser.id}/${Date.now()}.${ext}`;
+    const { error: upErr } = await sb.storage.from('activity-images').upload(filePath, imageFile);
+    if (upErr) { err.textContent = '画像アップロード失敗: ' + upErr.message; err.classList.add('show'); return; }
+    const { data: urlData } = sb.storage.from('activity-images').getPublicUrl(filePath);
+    imageUrl = urlData.publicUrl;
+  }
+
+  // チラシアップロード
+  let flyerUrl = null;
+  const flyerFile = document.getElementById('activity-flyer').files[0];
+  if (flyerFile) {
+    if (flyerFile.size > 10 * 1024 * 1024) {
+      err.textContent = 'チラシは10MB以下にしてください'; err.classList.add('show'); return;
+    }
+    const ext = flyerFile.name.split('.').pop().toLowerCase();
+    const filePath = `${currentUser.id}/${Date.now()}.${ext}`;
+    const { error: upErr } = await sb.storage.from('activity-flyers').upload(filePath, flyerFile);
+    if (upErr) { err.textContent = 'チラシアップロード失敗: ' + upErr.message; err.classList.add('show'); return; }
+    const { data: urlData } = sb.storage.from('activity-flyers').getPublicUrl(filePath);
+    flyerUrl = urlData.publicUrl;
+  }
+
+  const { error } = await sb.from('activities').insert({
+    title, activity_date: date, created_by: currentUser.id,
+    image_url: imageUrl, flyer_url: flyerUrl
+  });
   if (error) { err.textContent = 'エラー: ' + error.message; err.classList.add('show'); return; }
+
   closeModal('modal-create');
+  clearActivityImage();
+  document.getElementById('activity-flyer').value = '';
+  document.getElementById('activity-flyer-label').textContent = '';
   showToast('活動を追加しました');
   loadActivities();
+}
+
+function clearActivityImage() {
+  const input = document.getElementById('activity-image');
+  if (input) input.value = '';
+  const preview = document.getElementById('activity-image-preview');
+  if (preview) preview.style.display = 'none';
 }
 
 // ===== PASSWORD RESET =====
@@ -2730,6 +2838,50 @@ function escHtml(str) {
 }
 
 init();
+
+// カード画像プレビュー
+document.addEventListener('DOMContentLoaded', () => {
+  const cardImageInput = document.getElementById('card-image');
+  if (cardImageInput) {
+    cardImageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      const preview = document.getElementById('card-image-preview');
+      const img = document.getElementById('card-image-preview-img');
+      if (!file) { preview.style.display = 'none'; return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        img.src = ev.target.result;
+        preview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  // 活動画像プレビュー
+  const actImageInput = document.getElementById('activity-image');
+  if (actImageInput) {
+    actImageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      const preview = document.getElementById('activity-image-preview');
+      const img = document.getElementById('activity-image-preview-img');
+      if (!file) { preview.style.display = 'none'; return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        img.src = ev.target.result;
+        preview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  // チラシファイル名表示
+  const flyerInput = document.getElementById('activity-flyer');
+  if (flyerInput) {
+    flyerInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      const label = document.getElementById('activity-flyer-label');
+      if (label) label.textContent = file ? file.name : '';
+    });
+  }
+});
 
 // ===== PWA: Service Worker登録 =====
 if ('serviceWorker' in navigator) {
