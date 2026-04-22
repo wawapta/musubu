@@ -1037,6 +1037,26 @@
   </div>
 </div>
 
+<!-- ===== SIGNUP CONFIRM MODAL ===== -->
+<div id="modal-signup-confirm" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-signup-confirm')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="text-align:center;padding:0.5rem 0 1.5rem">
+      <div style="font-size:2.5rem;margin-bottom:0.5rem">📧</div>
+      <div class="modal-title" style="text-align:center;margin-bottom:0.3rem">確認メールを送りました</div>
+      <div style="font-size:0.85rem;color:var(--text-mid);line-height:1.8">
+        <span id="signup-confirm-email" style="font-weight:700;color:var(--sage-dark)"></span><br>
+        宛に確認メールをお送りしました
+      </div>
+    </div>
+    <div style="background:#EEF5F0;border-radius:12px;padding:1rem 1.2rem;margin-bottom:1.2rem;font-size:0.88rem;color:var(--sage-dark);line-height:1.7">
+      受信したメールの確認リンクをクリックすると、登録が完了しログインできるようになります。<br><br>
+      <span style="font-size:0.78rem;color:var(--text-light)">※ メールが届かない場合は、迷惑メールフォルダをご確認ください。</span>
+    </div>
+    <button class="btn btn-secondary" onclick="closeModal('modal-signup-confirm');switchAuthTab('login')">ログイン画面に戻る</button>
+  </div>
+</div>
+
 <!-- ===== BROADCAST MODAL ===== -->
 <div id="modal-broadcast" class="modal-overlay" onclick="closeModalIfOverlay(event,'modal-broadcast')">
   <div class="modal">
@@ -1411,13 +1431,21 @@ async function doSignup() {
   if (!email || !password) { err.textContent = 'メールとパスワードを入力してください'; err.classList.add('show'); return; }
   if (password.length < 6) { err.textContent = 'パスワードは6文字以上にしてください'; err.classList.add('show'); return; }
 
-  // まず登録
-  const { error: signUpError } = await sb.auth.signUp({ email, password });
+  const { data, error: signUpError } = await sb.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: 'https://app.ptamusubu.com/' }
+  });
   if (signUpError) { err.textContent = '登録に失敗しました: ' + signUpError.message; err.classList.add('show'); return; }
 
-  // 登録後に明示的にログインしてセッションを確立
-  const { data, error: signInError } = await sb.auth.signInWithPassword({ email, password });
-  if (signInError) { err.textContent = 'ログインに失敗しました: ' + signInError.message; err.classList.add('show'); return; }
+  // メール確認が必要な場合（session が null）
+  if (!data.session) {
+    openModal('modal-signup-confirm');
+    document.getElementById('signup-confirm-email').textContent = email;
+    return;
+  }
+
+  // メール確認が不要だった場合はそのまま進む
   currentUser = data.user;
   showScreen('setup');
 }
