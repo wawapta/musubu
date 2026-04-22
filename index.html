@@ -1627,20 +1627,24 @@ async function loadActivities() {
     html += otherActivities.map(a => {
       const isChecked = checkedIds.has(a.id);
       const actDate = new Date(a.activity_date);
+      const dayStart = new Date(actDate); dayStart.setHours(0,0,0,0);
       const dayEnd = new Date(actDate); dayEnd.setHours(23, 59, 59, 999);
-      const isToday = now <= dayEnd && actDate.toDateString() === now.toDateString();
-      const isWithin48h = !isToday && now <= new Date(dayEnd.getTime() + 48 * 60 * 60 * 1000);
+      const isToday = actDate.toDateString() === now.toDateString();
+      const isFuture = now < dayStart;
+      const isWithin48h = now > dayEnd && now <= new Date(dayEnd.getTime() + 48 * 60 * 60 * 1000);
       const dateStr = actDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
       let statusBadge = '';
-      if (isToday) {
+      if (isFuture) {
+        statusBadge = '<span style="font-size:0.72rem;background:#F0F0F0;color:#6B5B4E;padding:0.15rem 0.6rem;border-radius:20px;font-weight:500">予定</span>';
+      } else if (isToday) {
         statusBadge = '<span style="font-size:0.72rem;background:#EEF5F0;color:#4A6B4E;padding:0.15rem 0.6rem;border-radius:20px;font-weight:500">開催中</span>';
       } else if (isWithin48h) {
         statusBadge = '<span style="font-size:0.72rem;background:#FBF5EA;color:#8A6020;padding:0.15rem 0.6rem;border-radius:20px;font-weight:500">カード送信のみ可</span>';
       }
 
       return `
-        <div class="activity-card" onclick="openActivity('${a.id}', '${escHtml(a.title)}', '${dateStr}', ${isChecked}, ${isToday}, ${isWithin48h})">
+        <div class="activity-card" onclick="openActivity('${a.id}', '${escHtml(a.title)}', '${dateStr}', ${isChecked}, ${isToday}, ${isWithin48h}, ${isFuture})">
           <div class="activity-card-title">
             ${a.is_federation_event ? '<span style="font-size:0.68rem;background:var(--sage-light);color:var(--sage-dark);padding:0.12rem 0.5rem;border-radius:10px;font-weight:500;margin-right:0.4rem;vertical-align:middle">小P連</span>' : ''}
             ${escHtml(a.title)}
@@ -1660,7 +1664,7 @@ async function loadActivities() {
   container.innerHTML = html;
 }
 
-async function openActivity(id, title, dateStr, isChecked, isToday, isWithin48h) {
+async function openActivity(id, title, dateStr, isChecked, isToday, isWithin48h, isFuture = false) {
   selectedActivityId = id;
   const [{ data: checkins }, { data: activity }] = await Promise.all([
     sb.from('checkins').select('user_id, profiles(id, nickname, grade)').eq('activity_id', id),
@@ -1689,7 +1693,9 @@ async function openActivity(id, title, dateStr, isChecked, isToday, isWithin48h)
     </a>`;
   }
 
-  if (isWithin48h && !isToday) {
+  if (isFuture) {
+    html += `<div style="background:#F0F0F0;border-radius:10px;padding:0.7rem 1rem;margin-bottom:1.2rem;font-size:0.85rem;color:#6B5B4E">開催予定の活動です。当日になると参加記録ができます。</div>`;
+  } else if (isWithin48h && !isToday) {
     html += `<div style="background:#FBF5EA;border-radius:10px;padding:0.7rem 1rem;margin-bottom:1.2rem;font-size:0.85rem;color:#8A6020">終了済み・カード送信のみ可（48時間以内）</div>`;
   }
 
@@ -1700,7 +1706,7 @@ async function openActivity(id, title, dateStr, isChecked, isToday, isWithin48h)
       <span style="font-size:0.88rem;color:var(--sage-dark)">✓ 参加記録済みです</span>
       <button class="btn btn-sm" style="background:transparent;color:var(--text-mid);border:1px solid var(--border);padding:0.35rem 0.8rem;font-size:0.78rem" onclick="undoCheckin('${id}')">参加を取り消す</button>
     </div>`;
-  } else if (!isToday && !isChecked) {
+  } else if (!isFuture && !isToday && !isChecked && !isWithin48h) {
     html += `<div style="background:var(--cream);border-radius:10px;padding:0.7rem 1rem;margin-bottom:1.2rem;font-size:0.85rem;color:var(--text-light)">チェックインは終了しました</div>`;
   }
 
