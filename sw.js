@@ -1,12 +1,12 @@
 // Musubu Service Worker
-const CACHE_VERSION = 'musubu-v1';
+const CACHE_VERSION = 'musubu-v2';
 const CACHE_NAME = `musubu-cache-${CACHE_VERSION}`;
 const STATIC_ASSETS = [
-  '/musubu/',
-  '/musubu/index.html',
-  '/musubu/manifest.json',
-  '/musubu/icon-192.png',
-  '/musubu/icon-512.png'
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 // インストール：静的アセットをキャッシュ
@@ -51,22 +51,20 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // 成功したらキャッシュに保存
           const resClone = response.clone();
           caches.open(CACHE_NAME).then((c) => c.put(request, resClone)).catch(() => {});
           return response;
         })
-        .catch(() => caches.match(request).then((r) => r || caches.match('/musubu/')))
+        .catch(() => caches.match(request).then((r) => r || caches.match('/')))
     );
     return;
   }
 
-  // 静的アセット（JS/CSS/画像/フォント）はキャッシュ優先
+  // 静的アセットはキャッシュ優先
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
       return fetch(request).then((response) => {
-        // 成功したレスポンスのみキャッシュ
         if (response.ok && response.type === 'basic') {
           const resClone = response.clone();
           caches.open(CACHE_NAME).then((c) => c.put(request, resClone)).catch(() => {});
